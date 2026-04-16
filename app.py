@@ -46,6 +46,45 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # ---------------------------------------------------------
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 is_render = 'RENDER' in os.environ
+def start_cloudflare_tunnel():
+    """Cloudflare 터널을 백그라운드에서 실행합니다. Render 환경에서는 http2를 강제합니다."""
+    token = os.getenv("CLOUDFLARE_TUNNEL_TOKEN")
+    if not token:
+        print("⚠️ [Tunnel] CLOUDFLARE_TUNNEL_TOKEN이 없어 도메인 연결을 건너뜁니다.")
+        return
+
+    def run_tunnel():
+        import subprocess
+        import time
+        # 1. OS별 실행 파일 결정
+        if sys.platform == 'win32':
+            cf_exe = os.path.join(BASE_DIR, "cloudflared.exe")
+        else:
+            cf_exe = "cloudflared"
+
+        # 2. Render 환경(Linux)에서 QUIC 에러 방지를 위해 http2 프로토콜 강제
+        protocol = "http2" if is_render else "quic"
+        
+        print(f"🔗 [Step 2/2] 도메인 터널(Cloudflare)을 연결 중입니다... (Protocol: {protocol})")
+        cmd = [cf_exe, "tunnel", "--protocol", protocol, "run", "--token", token]
+
+        while True:
+            try:
+                subprocess.run(cmd, check=False)
+                time.sleep(5)
+            except Exception as e:
+                print(f"❌ [Tunnel] 실행 오류: {e}")
+                break
+
+    # 중복 실행 방지
+    if not os.environ.get('TUNNEL_RUNNING'):
+        os.environ['TUNNEL_RUNNING'] = 'true'
+        threading.Thread(target=run_tunnel, daemon=True).start()
+
+# [실행] SaaS 서버 및 터널 초기화
+print(f"🚀 [Step 1/2] SaaS 웹 서버를 가동합니다... (Port: {os.environ.get('PORT', 10000)})")
+start_cloudflare_tunnel()
+
 debug_mode = os.environ.get('FLASK_DEBUG') == '1' or (not is_render and sys.platform == 'win32')
 app.config['DEBUG'] = debug_mode
 
