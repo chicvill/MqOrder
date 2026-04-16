@@ -51,6 +51,31 @@
     .day-label { font-size: 0.7rem; color: #64748b; font-weight: 800; }
 
     @media (max-width: 1024px) { .dashboard-wrapper { grid-template-columns: 1fr; } }
+
+    /* 실시간 위젯 스타일 */
+    .live-summary {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    .live-card {
+        background: linear-gradient(135deg, #1e293b, #0f172a);
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 20px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    .live-card.accent { border-left: 4px solid var(--primary); }
+    .live-card.success { border-left: 4px solid var(--accent); }
+    .live-card.warning { border-left: 4px solid #f59e0b; }
+
+    .live-label { font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; }
+    .live-value { font-size: 2rem; font-weight: 950; color: #fff; letter-spacing: -1px; }
+    .live-diff { font-size: 0.75rem; font-weight: 700; color: #10b981; display: flex; align-items: center; gap: 4px; }
 </style>
 {% endblock %}
 
@@ -63,6 +88,25 @@
     <button onclick="window.print()" style="background:var(--card); border:1px solid var(--border); border-radius:15px; padding:12px 25px; cursor:pointer; color:white; font-weight:800; display:flex; align-items:center; gap:10px; font-size: 0.95rem;">
         <i data-lucide="printer" size="20"></i> 인쇄
     </button>
+</div>
+
+<!-- 실시간 요약 위젯 -->
+<div class="live-summary">
+    <div class="live-card success">
+        <div class="live-label">오늘의 총 매출</div>
+        <div class="live-value" id="live-revenue">0원</div>
+        <div class="live-diff"><i data-lucide="arrow-up-right" size="14"></i> 실시간 업데이트 중</div>
+    </div>
+    <div class="live-card accent">
+        <div class="live-label">결제 완료 건수</div>
+        <div class="live-value" id="live-orders">0건</div>
+        <div class="live-diff"><i data-lucide="activity" size="14"></i> 오늘 기준</div>
+    </div>
+    <div class="live-card warning">
+        <div class="live-label">현재 미결제 테이블</div>
+        <div class="live-value" id="live-pending">0개</div>
+        <div class="live-diff"><i data-lucide="clock" size="14"></i> 즉시 대응 필요</div>
+    </div>
 </div>
 
 <div class="dashboard-wrapper">
@@ -145,14 +189,54 @@
 {% block extra_script %}
 <script>
     lucide.createIcons();
-    // 스마트 대시보드 로드 애니메이션 (진행률 표시줄)
-    window.addEventListener('DOMContentLoaded', () => {
-        const bars = document.querySelectorAll('.progress-bar');
-        bars.forEach(bar => {
-            const finalWidth = bar.style.width;
-            bar.style.width = '0%';
-            setTimeout(() => { bar.style.width = finalWidth; }, 300);
+    
+    // [Socket.IO] 실시간 데이터 동기화
+    const socket = io();
+    const storeId = "{{ session.get('store_id', '') }}";
+    
+    if (storeId) {
+        socket.emit('join', { store_id: storeId });
+        console.log("📡 실시간 관제 센터 연결 완료: " + storeId);
+    }
+
+    socket.on('dashboard_update', (data) => {
+        console.log("🎁 실시간 통계 수신:", data);
+        updateValue('live-revenue', data.today_revenue, '원');
+        updateValue('live-orders', data.today_orders_count, '건');
+        updateValue('live-pending', data.pending_tables, '개');
+        
+        // 시각적 피드백 (반짝임 효과)
+        const cards = document.querySelectorAll('.live-card');
+        cards.forEach(card => {
+            card.style.borderColor = 'var(--primary)';
+            setTimeout(() => { card.style.borderColor = 'rgba(255,255,255,0.05)'; }, 1000);
         });
     });
+
+    function updateValue(id, value, suffix) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        
+        const startValue = parseInt(el.innerText.replace(/[^0-9]/g, '')) || 0;
+        const targetValue = value;
+        animateValue(el, startValue, targetValue, 1000, suffix);
+    }
+
+    function animateValue(obj, start, end, duration, suffix) {
+        let startTimestamp = null;
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            const current = Math.floor(progress * (end - start) + start);
+            obj.innerHTML = current.toLocaleString() + suffix;
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
+            }
+        };
+        window.requestAnimationFrame(step);
+    }
+
+    // 초기 데이터 로드 (API 호출 가능하지만 일단 현재 매장의 데이터를 기본값으로 세팅)
+    // 실제 운영 시에는 /api/health 등에서 초기값을 가져오도록 보강 가능
 </script>
 {% endblock %}

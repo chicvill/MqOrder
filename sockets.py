@@ -229,21 +229,46 @@ def register_socketio_events(socketio):
         
         db.session.commit()
         
-        # [고도화] 결제 완료 정보를 상세히 전송 (음성 안내용)
+        # [고도화] 결제 완료 정보를 상세히 전송 (음성 안내용 및 대시보드 갱신용)
+        # 오늘 매출 및 미결제 테이블 수 등 통계 계산
+        today = datetime.utcnow().date()
+        today_orders = Order.query.filter(
+            Order.store_id == slug, 
+            Order.status == 'paid',
+            func.date(Order.paid_at) == today
+        ).all()
+        today_revenue = sum(o.total_price for o in today_orders)
+        
+        pending_tables = db.session.query(func.count(func.distinct(Order.table_id))).filter(
+            Order.store_id == slug,
+            Order.status.in_(['pending', 'ready', 'served'])
+        ).scalar() or 0
+
+        # 대시보드 데이터 패키지
+        stats_data = {
+            'today_revenue': today_revenue,
+            'today_orders_count': len(today_orders),
+            'pending_tables': pending_tables,
+            'last_paid_amount': total_sum
+        }
+
+        socketio.emit('dashboard_update', stats_data, room=slug)
+
         socketio.emit('table_status_update', {
             'store_id': slug, 
             'session_id': sid, 
             'table_id': tid, 
             'status': 'paid',
             'total_price': total_sum,
-            'point_info': point_info if 'point_info' in locals() else None
+            'point_info': point_info if 'point_info' in locals() else None,
+            'stats': stats_data # 통계 정보 포함
         }, room=slug)
 
         # [제안 반영] 고객 브라우저에 세션 종료(자동 로그아웃) 신호 전송
         socketio.emit('order_paid', {
             'session_id': sid,
             'message': '안녕히 가세요! 결제가 완료되어 세션이 종료되었습니다.'
-        }, room=slug) # 매장 룸으로 보내면 해당 세션을 가진 브라우저가 반응함
+        }, room=slug) 
 
         # [고도화] 현금영수증 신청이 있는 경우 즉시 자동 발행 (API 연동)
         for o in orders:

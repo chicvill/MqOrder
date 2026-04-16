@@ -172,7 +172,7 @@
                     <div class="biz-analyzing" id="bizAnalyzing">
                         <div class="biz-spinner"></div> AI가 사업자등록증을 분석 중입니다…
                     </div>
-                    <input type="file" id="bizFileInput" accept="image/*" style="display:none" onchange="analyzeBizPhoto(this.files[0])">
+                    <input type="file" id="bizFileInput" accept="image/*" capture="environment" style="display:none" onchange="analyzeBizPhoto(this.files[0])">
 
                     <div class="info-grid">
                         <div class="form-group"><label>업소 정식 명칭</label><input type="text" name="name" value="{{ store.name }}"></div>
@@ -252,7 +252,7 @@
                 <input type="hidden" id="menu_data_raw" value='{{ store.menu_data | tojson | safe if store.menu_data else "{}" }}'>
             </div>
         </form>
-        <input type="file" id="imageUploadInput" style="display:none" onchange="handleFileUpload(this)">
+        <input type="file" id="imageUploadInput" style="display:none" accept="image/*" capture="environment" onchange="handleFileUpload(this)">
     </div>
 
     <script>
@@ -375,6 +375,7 @@
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = 'image/*';
+            input.setAttribute('capture', 'environment'); // 후면 카메라 즉시 활성화
             input.onchange = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;

@@ -42,22 +42,44 @@ def analyze_business_registration(image_base64):
         return {"error": f"사업자등록증 분석 실패: {str(e)}"}
 
 def extract_menu_from_image(image_path):
+    """
+    메뉴판 이미지를 사진 찍어 올리면 AI가 카테고리별 메뉴와 가격을 구조화된 데이터로 추출합니다.
+    """
     api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key: return {"error": "API 키 없음"}
+    if not api_key: 
+        return {"error": "API 키가 설정되지 않았습니다."}
+
     # 프록시 감지 차단을 위해 trust_env=False 설정
     http_client = httpx.Client(trust_env=False)
     client = OpenAI(api_key=api_key, http_client=http_client)
+    
     try:
         with open(image_path, "rb") as f:
-            import base64
             b64 = base64.b64encode(f.read()).decode('utf-8')
+        
+        prompt = (
+            "당신은 메뉴판 데이터 전문가입니다. 이미지 내의 모든 메뉴와 가격을 분석하여 다음 JSON 형식으로만 응답하세요.\n"
+            "반환 형식: { \"menu_data\": [ { \"category\": \"카테고리명\", \"items\": [ { \"name\": \"메뉴명\", \"price\": 5000 } ] } ] }\n"
+            "주의사항:\n"
+            "1. 카테고리가 명확하지 않으면 '기타'로 분류하세요.\n"
+            "2. 가격에서 '원'이나 ','는 제거하고 순수 숫자(Integer)만 남기세요.\n"
+            "3. 모든 텍스트는 한국어로 추출하세요."
+        )
+
         res = client.chat.completions.create(
             model="gpt-4o",
-            messages=[{"role": "user", "content": [{"type": "text", "text": "메뉴판 이미지에서 메뉴와 가격을 JSON으로 추출해줘."}, {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}]}],
+            messages=[{
+                "role": "user", 
+                "content": [
+                    {"type": "text", "text": prompt}, 
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+                ]
+            }],
             response_format={"type": "json_object"}
         )
         return json.loads(res.choices[0].message.content)
-    except: return {"error": "추출 실패"}
+    except Exception as e:
+        return {"error": f"메뉴 추출 실패: {str(e)}"}
 
 def extract_business_info_from_image(image_path):
     """

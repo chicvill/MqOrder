@@ -633,16 +633,33 @@ def init_admin_routes(app):
         
         try:
             # AI 분석 시작
-            menu_data = extract_menu_from_image(temp_path)
+            raw_result = extract_menu_from_image(temp_path)
             
             # 분석 완료 후 임시 파일 삭제
             if os.path.exists(temp_path):
                 os.remove(temp_path)
                 
-            if "error" in menu_data:
-                return jsonify({'status': 'error', 'message': menu_data['error']}), 500
+            if "error" in raw_result:
+                return jsonify({'status': 'error', 'message': raw_result['error']}), 500
+            
+            # [변환] List 기반 AI 응답을 Dict 기반 UI 데이터로 변환
+            # AI: { "menu_data": [ { "category": "C", "items": [...] } ] }
+            # UI: { "C": [...], "D": [...] }
+            transformed_menu = {}
+            if "menu_data" in raw_result:
+                for cat_group in raw_result["menu_data"]:
+                    cat_name = cat_group.get("category", "기타")
+                    items = cat_group.get("items", [])
+                    # 이미지 경로는 비워둠 (추후 개별 업로드)
+                    for item in items:
+                        if "image" not in item:
+                            item["image"] = ""
+                    transformed_menu[cat_name] = items
+            
+            if not transformed_menu:
+                return jsonify({'status': 'error', 'message': '메뉴 데이터를 추출하지 못했습니다. 선명한 사진으로 다시 시도해 주세요.'}), 422
                 
-            return jsonify({'status': 'success', 'menu_data': menu_data})
+            return jsonify({'status': 'success', 'menu_data': transformed_menu})
         except Exception as e:
             return jsonify({'status': 'error', 'message': str(e)}), 500
 
