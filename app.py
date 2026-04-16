@@ -66,11 +66,13 @@ def start_cloudflare_tunnel():
         protocol = "http2" if is_render else "quic"
         
         print(f"🔗 [Step 2/2] 도메인 터널(Cloudflare)을 연결 중입니다... (Protocol: {protocol})")
-        cmd = [cf_exe, "tunnel", "--protocol", protocol, "run", "--token", token]
+        # 인자 순서를 run --token 뒤로 배치하여 프로토콜 설정을 확실히 적용
+        cmd = [cf_exe, "tunnel", "run", "--token", token, "--protocol", protocol]
 
         while True:
             try:
                 subprocess.run(cmd, check=False)
+                print(f"🔄 [Tunnel] 터널 재연결 시도 중... (Protocol: {protocol})")
                 time.sleep(5)
             except Exception as e:
                 print(f"❌ [Tunnel] 실행 오류: {e}")
