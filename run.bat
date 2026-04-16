@@ -1,158 +1,116 @@
 @echo off
+:: 한글 깨짐 방지를 위한 UTF-8 코드페이지 설정
+chcp 65001 >nul
+title MQnet 통합 제어 센터 (Control Center)
 setlocal enabledelayedexpansion
-cd /d %~dp0
 
 :MENU
 cls
-echo ===================================================
-echo   [MQnet] Unified Server Manager
-echo ===================================================
-echo  1. Local Test Mode (Port 10000, Debug ON)
-echo  2. Domain Connection (External Access, run_domain.py)
-echo  3. Normal Server Run (Standard Environment)
-echo  4. [Force Reset] Recreate .venv (Full Repair)
-echo  5. [Status Check] VENV Info ^& Update Libs
-echo  6. [Sync Knowledge] Update Knowledge DB (Seed)
-echo  0. Exit
-echo ===================================================
-set /p choice="Enter choice (0-6): "
+echo ======================================================
+echo    MQnet SaaS 플랫폼 - 통합 개발 및 운영 메뉴
+echo ======================================================
+echo  1. 가상환경 설정/업데이트 (라이브러리 동기화)
+echo  2. GitHub 업로드 (SaaS 서비스 실시간 갱신)
+echo  3. Docker 빌드 및 테스트 (로컬 5001번 포트)
+echo  4. 로컬 PC 서버 실행 (로컬 10000번 포트)
+echo  5. PC 도메인 터널 실행 (mq.chicvill.store 연결)
+echo  6. SaaS 서버 상태 확인 (Render-Docker-Supabase)
+echo  7. 패키지 설치 목록 확인 (VENV 점검)
+echo  8. [주의] 가상환경 강제 초기화 (VENV 재생성)
+echo  9. Knowledge DB 동기화 (데모 데이터 생성)
+echo  0. 종료
+echo ======================================================
+set /p choice="원하는 작업 번호를 입력하고 엔터를 누르세요: "
 
-if "%choice%"=="1" goto LOCAL_RUN
-if "%choice%"=="2" goto DOMAIN_RUN
-if "%choice%"=="3" goto NORMAL_RUN
-if "%choice%"=="4" goto SETUP_VENV
-if "%choice%"=="5" goto VENV_STATUS
-if "%choice%"=="6" goto SEED_KNOWLEDGE
+if "%choice%"=="1" goto VENV_SETUP
+if "%choice%"=="2" goto GIT_PUSH
+if "%choice%"=="3" goto DOCKER_REBUILD
+if "%choice%"=="4" goto RUN_LOCAL
+if "%choice%"=="5" goto RUN_TUNNEL
+if "%choice%"=="6" goto SAAS_CHECK
+if "%choice%"=="7" goto VENV_LIST
+if "%choice%"=="8" goto VENV_RESET
+if "%choice%"=="9" goto DB_SEED
 if "%choice%"=="0" exit
 goto MENU
 
-:LOCAL_RUN
-echo [Info] Preparing Local Test Mode...
-call :CHECK_VENV
-if errorlevel 1 pause & goto MENU
-echo [Auto-Sync] Updating knowledge base before start...
-.\.venv\Scripts\python.exe seed_knowledge.py
-echo.
-echo  [Local URLs]
-echo   - Counter:  http://localhost:10000/counter
-echo   - Customer: http://localhost:10000/customer/3
-echo   - Waiting:  http://localhost:10000/waiting
-echo.
-set PORT=10000
+:VENV_SETUP
+echo [1] 가상환경(VENV) 라이브러리를 업데이트합니다...
+if not exist venv (
+    python -m venv venv
+)
+call venv\Scripts\activate
+pip install -r requirements.txt
+echo ✅ 모든 라이브러리 업데이트가 완료되었습니다.
+pause
+goto MENU
+
+:GIT_PUSH
+echo [2] GitHub에 코드를 전송하여 실제 서버를 갱신합니다...
+git add .
+set /p commit_msg="업데이트 내용 입력 (엔터 시 자동 생성): "
+if "!commit_msg!"=="" set commit_msg="업데이트: %date% %time%"
+git commit -m "!commit_msg!"
+git push origin main
+echo ✅ 업로드 성공! 잠시 후 실제 서비스(mq.chicvill.store)에 반영됩니다.
+pause
+goto MENU
+
+:DOCKER_REBUILD
+echo [3] Docker 컨테이너 서버를 빌드 및 실행합니다...
+docker rm -f mqnet-live
+docker build -t mqnet-app:latest .
+docker run -d -p 5001:5000 --env-file .env --name mqnet-live mqnet-app:latest
+echo ✅ 완료! 브라우저에서 http://localhost:5001 로 접속하세요.
+pause
+goto MENU
+
+:RUN_LOCAL
+echo [4] 로컬 PC 서버를 실행합니다 (디버깅용)...
+call venv\Scripts\activate
 set FLASK_DEBUG=1
-.venv\Scripts\python.exe app.py
+python app.py
 pause
 goto MENU
 
-:DOMAIN_RUN
-echo [Info] Starting Domain Connection Mode...
-call :CHECK_VENV
-if errorlevel 1 pause & goto MENU
-.venv\Scripts\python.exe run_domain.py
+:RUN_TUNNEL
+echo [5] 로컬 PC 서비스를 외부 도메인으로 임시 연결합니다...
+call venv\Scripts\activate
+python update_tunnel.py
 pause
 goto MENU
 
-:NORMAL_RUN
-echo [Info] Starting Normal Server Mode...
-call :CHECK_VENV
-if errorlevel 1 pause & goto MENU
-echo [Auto-Sync] Updating knowledge base...
-.\.venv\Scripts\python.exe seed_knowledge.py
-.venv\Scripts\python.exe app.py
+:SAAS_CHECK
+echo [6] 클라우드 운영 서버 상태를 확인합니다...
+start https://github.com/chicvill/MqOrder/actions
+start https://mq.chicvill.store/api/health
+echo ✅ 배포 현황 및 헬스 체크 페이지를 브라우저로 열었습니다.
 pause
 goto MENU
 
-:VENV_STATUS
-echo ===================================================
-echo [MQnet] VENV Status Check ^& Quick Update
-echo ===================================================
-if not exist .venv (
-    echo [!] .venv not found. Redirecting to setup...
-    pause
-    goto SETUP_VENV
-)
-echo [OK] .venv found. Checking Libs...
-.\.venv\Scripts\python.exe -c "import flask, sqlalchemy, cryptography; print(' - Flask:', flask.__version__); print(' - SQLAlchemy:', sqlalchemy.__version__); print(' - Cryptography: OK')"
-
-if errorlevel 1 goto UPDATE_RELIBS
-
-echo [Info] Updating libraries from requirements.txt (if any)...
-.\.venv\Scripts\pip.exe install -r requirements.txt -q
-goto VENV_DONE
-
-:UPDATE_RELIBS
-echo [!] Some libraries are missing or need update. Running pip install...
-.\.venv\Scripts\pip.exe install -r requirements.txt
-
-:VENV_DONE
-echo ===================================================
-echo [OK] Status check complete.
-echo ===================================================
+:VENV_LIST
+echo [7] 현재 설치된 파이썬 패키지 목록입니다.
+call venv\Scripts\activate
+pip list
 pause
 goto MENU
 
-:SETUP_VENV
-echo ===================================================
-echo [MQnet] VENV Setup and Repair Mode (FORCE RESET)
-echo ===================================================
-if exist .venv (
-    echo [!] WARNING: This will delete the current .venv.
-    set /p confirm="Are you sure? (Y/N): "
-    if /i not "!confirm!"=="Y" goto MENU
-    echo [Info] Removing existing .venv folder...
-    rmdir /s /q .venv
+:VENV_RESET
+echo [8] 가상환경(VENV) 폴더를 삭제하고 처음부터 다시 만듭니다.
+set /p confirm="진행하시겠습니까? (Y/N): "
+if /i "%confirm%"=="Y" (
+    rmdir /s /q venv
+    python -m venv venv
+    call venv\Scripts\activate
+    pip install -r requirements.txt
+    echo ✅ 초기화가 성공적으로 완료되었습니다.
 )
-
-echo [Info] Checking Python...
-set PYTHON_CMD=python
-python --version >nul 2>&1
-if errorlevel 1 (
-    set PYTHON_CMD=py
-    py --version >nul 2>&1
-    if errorlevel 1 (
-        echo [ERROR] Python not found. Please install Python.
-        pause
-        goto MENU
-    )
-)
-
-echo [Info] Creating VENV using %PYTHON_CMD%...
-%PYTHON_CMD% -m venv .venv
-if errorlevel 1 (
-    echo [ERROR] Failed to create VENV.
-    pause
-    goto MENU
-)
-
-echo [Info] Configuring Terminal Environment (PowerShell Policy)...
-powershell -Command "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force"
-
-echo [Info] Installing packages...
-.\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\pip.exe install --no-cache-dir -r requirements.txt
-
-echo ===================================================
-echo Setup Complete!
-echo ===================================================
 pause
 goto MENU
 
-:CHECK_VENV
-if not exist ".venv\Scripts\python.exe" (
-    echo [ERROR] Virtual environment is missing or corrupted.
-    echo         Please run option 5 or 4 first.
-    exit /b 1
-)
-exit /b 0
-
-:SEED_KNOWLEDGE
-echo ===================================================
-echo [MQnet] Synchronizing Knowledge DB...
-echo ===================================================
-call :CHECK_VENV
-if errorlevel 1 pause & goto MENU
-.\.venv\Scripts\python.exe seed_knowledge.py
-echo.
-echo [Done] Knowledge base has been updated.
+:DB_SEED
+echo [9] 데이터베이스에 데모 데이터를 채워 넣습니다...
+start http://localhost:10000/api/internal/seed-demo
+echo ✅ 동기화 요청이 완료되었습니다. (서버가 켜져 있어야 합니다)
 pause
 goto MENU
