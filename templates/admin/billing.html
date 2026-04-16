@@ -1,0 +1,174 @@
+{% extends "admin/base.html" %}
+{% set active_page = 'billing' %}
+
+{% block title %}빌링 관리 마스터 | MQnet Central{% endblock %}
+
+{% block extra_style %}
+<style>
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+    .stat-card { 
+        background: var(--card); border: 1px solid var(--border); border-radius: 15px; padding: 15px 25px; 
+        display: flex; justify-content: space-between; align-items: center;
+    }
+    .stat-label { font-size: 1.2rem; font-weight: 900; text-transform: uppercase; margin-bottom: 2px; }
+    .stat-number { font-size: 4rem; font-weight: 900; line-height: 1; letter-spacing: -2px; }
+
+    .billing-list { display: flex; flex-direction: column; gap: 8px; }
+    .billing-row { 
+        background: rgba(30, 41, 59, 0.4); border: 1px solid var(--border); border-radius: 12px; 
+        padding: 12px 20px; display: grid; grid-template-columns: 2fr 1fr 1.2fr 0.8fr 1.5fr;
+        align-items: center; transition: 0.1s;
+    }
+    .billing-row:hover { border-color: var(--primary); background: rgba(30, 41, 59, 0.8); }
+
+    .store-identity { display: flex; align-items: center; gap: 12px; }
+    .store-avatar { width: 44px; height: 44px; border-radius: 10px; background: rgba(59, 130, 246, 0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 800; }
+    
+    .toggle-common {
+        padding: 12px 0; width: 100%; border-radius: 10px; font-weight: 900; font-size: 1rem; 
+        cursor: pointer !important; border: 1px solid transparent; transition: 0.15s;
+        display: flex; align-items: center; gap: 8px; justify-content: center;
+    }
+    
+    .btn-approved { background: rgba(16, 185, 129, 0.15); color: #10b981; border-color: rgba(16, 185, 129, 0.4); }
+    .btn-unapproved { background: rgba(239, 68, 68, 0.15); color: #ef4444; border-color: rgba(239, 68, 68, 0.4); }
+
+    .btn-paid { background: #10b981; color: white; border-color: #059669; }
+    .btn-unpaid { background: #ef4444; color: white; border-color: #dc2626; }
+
+    .d-day-badge { 
+        font-family: 'Pretendard', sans-serif; font-weight: 900; font-size: 1.2rem; 
+        padding: 5px 12px; border-radius: 8px; 
+    }
+    .d-day-ok { color: #10b981; background: rgba(16, 185, 129, 0.1); }
+    .d-day-warn { color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+    .d-day-danger { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+
+    .header-text { font-size: 0.85rem; font-weight: 900; color: #475569; text-transform: uppercase; margin-bottom: 5px; }
+    .non-btn { cursor: default !important; opacity: 0.8; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="header" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: flex-end;">
+    <div>
+        <h1 style="margin:0; font-size:2rem; font-weight:900; letter-spacing:-1px;">BILLING MANAGEMENT</h1>
+        <p style="margin:0; font-size:0.9rem; color: #64748b; font-weight: 700;">플랫폼 최고 관리자(ADMIN) 전용 정산/승인 제어</p>
+    </div>
+    <a href="/admin/billing/payouts" target="_blank" class="toggle-common btn-paid" style="padding: 14px 30px; width: auto; font-size: 1.1rem;">
+        <i data-lucide="printer" size="20"></i> 정산 리포트 생성
+    </a>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card" style="border-left: 6px solid var(--primary);">
+        <div>
+            <div class="stat-label" style="color: var(--primary);">가입업소</div>
+            <div class="stat-number">{{ total_stores }}</div>
+        </div>
+        <i data-lucide="layers" size="54" style="color:var(--primary); opacity:0.2;"></i>
+    </div>
+    <div class="stat-card" style="border-left: 6px solid #64748b;">
+        <div>
+            <div class="stat-label" style="color: #64748b;">대기 (Blocking)</div>
+            <div class="stat-number">{{ unpaid_count }}</div>
+        </div>
+        <i data-lucide="alert-circle" size="54" style="color:#64748b; opacity:0.2;"></i>
+    </div>
+    <div class="stat-card" style="border-left: 6px solid var(--danger);">
+        <div>
+            <div class="stat-label" style="color: var(--danger);">미납 정지</div>
+            <div class="stat-number" style="color: var(--danger);">{{ suspended_count }}</div>
+        </div>
+        <i data-lucide="pause-circle" size="54" style="color:var(--danger); opacity:0.2;"></i>
+    </div>
+</div>
+
+<div class="billing-list">
+    <div style="display:grid; grid-template-columns: 2fr 1fr 1.2fr 0.8fr 1.5fr; padding: 0 20px 5px; border-bottom: 1px solid var(--border); margin-bottom: 10px;">
+        <div class="header-text">가맹점 정보</div>
+        <div class="header-text" style="text-align:center;">승인 상태</div>
+        <div class="header-text" style="text-align:center;">계약일 (납부일)</div>
+        <div class="header-text" style="text-align:center;">잔여일</div>
+        <div class="header-text" style="text-align:right;">수납 관리</div>
+    </div>
+
+    {% for s in stores %}
+    {% set diff = (s.expires_at - now).days if s.expires_at else 0 %}
+    <div class="billing-row">
+        <!-- 1. 가맹점 정보 -->
+        <div class="store-identity">
+            <div class="store-avatar"><i data-lucide="building-2"></i></div>
+            <div>
+                <div style="font-weight: 950; font-size: 1.4rem; color: white; line-height:1.2;">{{ s.name }}</div>
+                <div style="font-size:0.9rem; color:var(--primary); font-weight:800;">@{{ s.id }}</div>
+            </div>
+        </div>
+
+        <!-- 2. 승인 상태 (토글 - 최고관리자 전용) -->
+        <div style="text-align:center; padding: 0 10px;">
+            {% if session.get('role')|lower == 'admin' %}
+            <button onclick="toggleStatus('{{ s.id }}')" class="toggle-common {{ 'btn-approved' if s.status == 'active' else 'btn-unapproved' }}">
+                <i data-lucide="{{ 'check-circle' if s.status == 'active' else 'help-circle' }}" size="18"></i>
+                <span id="label-status-{{ s.id }}">{{ '승인' if s.status == 'active' else '미승인' }}</span>
+            </button>
+            {% else %}
+            <span class="toggle-common {{ 'btn-approved' if s.status == 'active' else 'btn-unapproved' }} non-btn">
+                {{ '승인' if s.status == 'active' else '미승인' }}
+            </span>
+            {% endif %}
+        </div>
+
+        <!-- 3. 계약 납부일 -->
+        <div style="text-align:center; font-family:monospace; font-weight:900; color: #fff; font-size: 1.2rem;">
+            {{ s.expires_at.strftime('%Y-%m-%d') if s.expires_at else '-' }}
+        </div>
+
+        <!-- 4. 잔여일 -->
+        <div style="text-align:center;">
+            <span class="d-day-badge {{ 'd-day-danger' if diff <= 3 else ('d-day-warn' if diff <= 7 else 'd-day-ok') }}">
+                {{ diff if diff > 0 else 0 }}
+            </span>
+        </div>
+
+        <!-- 5. 수납 상태 (토글 - 최고관리자 전용) -->
+        <div style="text-align:right; padding-left: 10px;">
+            {% if session.get('role')|lower == 'admin' %}
+            <button onclick="togglePayment('{{ s.id }}')" class="toggle-common {{ 'btn-paid' if s.payment_status == 'paid' else 'btn-unpaid' }}">
+                <i data-lucide="{{ 'check' if s.payment_status == 'paid' else 'slash' }}" size="20"></i>
+                <span id="label-pay-{{ s.id }}">{{ '완납' if s.payment_status == 'paid' else '미납' }}</span>
+            </button>
+            {% else %}
+            <span class="toggle-common {{ 'btn-paid' if s.payment_status == 'paid' else 'btn-unpaid' }} non-btn">
+                {{ '완납' if s.payment_status == 'paid' else '미납' }}
+            </span>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    async function toggleStatus(sid) {
+        try {
+            const r = await fetch('/api/admin/store/status-toggle', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({store_id: sid})
+            });
+            if((await r.json()).status === 'success') location.reload();
+        } catch(e) { alert('오류: ' + e); }
+    }
+
+    async function togglePayment(sid) {
+        try {
+            const r = await fetch('/api/admin/billing/toggle', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({store_id: sid})
+            });
+            if((await r.json()).status === 'success') location.reload();
+        } catch(e) { alert('오류: ' + e); }
+    }
+</script>
+{% endblock %}

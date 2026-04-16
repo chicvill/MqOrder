@@ -1,0 +1,125 @@
+{% extends "admin/base.html" %}
+{% set active_page = 'stores' %}
+
+{% block title %}가맹점 인스턴스 관리 | MQnet Central Admin{% endblock %}
+
+{% block extra_style %}
+<style>
+    .store-list-container { display: flex; flex-direction: column; gap: 10px; }
+    .store-row { 
+        background: rgba(30, 41, 59, 0.4); border: 1px solid var(--border); border-radius: 15px; 
+        padding: 20px 30px; display: grid; grid-template-columns: 2fr 1fr 1fr 1.5fr 1.2fr;
+        align-items: center; transition: 0.1s;
+    }
+    .store-row:hover { border-color: var(--primary); background: rgba(30, 41, 59, 0.8); }
+    
+    .store-info-box { display: flex; align-items: center; gap: 15px; }
+    .store-icon { width: 48px; height: 48px; border-radius: 12px; background: rgba(59, 130, 246, 0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; }
+    .store-name-text { font-weight: 950; font-size: 1.4rem; color: white; line-height: 1.2; }
+    .store-id-text { font-size: 0.9rem; color: var(--primary); font-weight: 800; }
+
+    .manager-box { display: flex; align-items: center; gap: 8px; font-weight: 800; color: #94a3b8; font-size: 1rem; }
+    
+    .status-badge { 
+        padding: 6px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 900; 
+        display: inline-flex; align-items: center; gap: 6px; text-transform: uppercase;
+    }
+    .status-active { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .status-unpaid { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+
+    .tool-btn { 
+        width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; 
+        transition: 0.15s; color: #94a3b8; background: rgba(255,255,255,0.03); border: 1px solid var(--border); 
+        cursor: pointer; text-decoration: none;
+    }
+    .tool-btn:hover { background: var(--primary); color: white; transform: scale(1.1); border-color: var(--primary); }
+    .btn-delete { color: #f87171 !important; }
+    .btn-delete:hover { background: var(--danger) !important; border-color: var(--danger) !important; color: white !important; }
+    
+    .master-action-btn { 
+        background: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 12px;
+        font-weight: 900; font-size: 1rem; cursor: pointer; display: flex; align-items: center; gap: 10px; text-decoration: none;
+        transition: 0.2s;
+    }
+    .master-action-btn:hover { transform: translateY(-3px); opacity: 0.9; }
+
+    .column-label { font-size: 0.8rem; font-weight: 900; color: #475569; text-transform: uppercase; margin-bottom: 5px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="header" style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end;">
+    <div>
+        <h1 style="margin:0; font-size:2.2rem; font-weight:950; letter-spacing:-1px;">INSTANCE MANAGEMENT</h1>
+        <p style="margin:0; font-size:0.95rem; color:var(--text-dim); font-weight:700;">가맹점 인스턴스 영구 배포 및 실시간 제어</p>
+    </div>
+    {% if session['role']|lower == 'admin' %}
+    <a href="/admin/stores/add" class="master-action-btn" style="background:#10b981;">
+        <i data-lucide="plus-circle" size="20"></i> 신규 가맹점 배포
+    </a>
+    {% endif %}
+</div>
+
+<div class="store-list-container">
+    <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1.5fr 1.2fr; padding: 0 30px 10px; border-bottom: 1px solid var(--border); margin-bottom: 10px;">
+        <div class="column-label">인스턴스 정보</div>
+        <div class="column-label">담당 관리자</div>
+        <div class="column-label">가동 상태</div>
+        <div class="column-label">구독 라이선스</div>
+        <div class="column-label" style="text-align:right;">제어 센터</div>
+    </div>
+    
+    {% for store in stores %}
+    <div class="store-row">
+        <!-- 1. 매장 정보 -->
+        <div class="store-info-box">
+            <div class="store-icon"><i data-lucide="server"></i></div>
+            <div>
+                <div class="store-name-text">{{ store.name }}</div>
+                <div class="store-id-text">ID: {{ store.id }}</div>
+            </div>
+        </div>
+        
+        <!-- 2. 하위 관리자 -->
+        <div class="manager-box">
+            <i data-lucide="user-check" size="18" style="color:var(--primary);"></i>
+            {{ store.manager.username if store.manager else '미지정' }}
+        </div>
+        
+        <!-- 3. 가동 상태 -->
+        <div>
+            <span class="status-badge status-active">
+                <i data-lucide="activity" size="14"></i> {{ store.status.upper() }}
+            </span>
+        </div>
+        
+        <!-- 4. 결제 상태 -->
+        <div>
+            <span class="status-badge {% if store.payment_status == 'paid' %}status-active{% else %}status-unpaid{% endif %}">
+                <i data-lucide="{{ 'check-circle' if store.payment_status == 'paid' else 'alert-triangle' }}" size="14"></i>
+                {{ '정상 구독 중' if store.payment_status == 'paid' else '구독 정지 / 미납' }}
+            </span>
+        </div>
+        
+        <!-- 5. 액션 영역 -->
+        <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px;">
+            <a href="/admin/stores/{{ store.id }}/config" class="tool-btn" title="설정"><i data-lucide="settings" size="20"></i></a>
+            
+            {% if session['role']|lower == 'admin' %}
+            <form action="/admin/stores/{{ store.id }}/delete" method="POST" onsubmit="return confirm('🚨 [주의] 매장 [{{ store.name }}] 인스턴스를 영구 삭제하시겠습니까?\n이 작업은 되돌릴 수 없으며 모든 데이터가 파괴됩니다.');" style="margin:0;">
+                <button type="submit" class="tool-btn btn-delete" title="매장 삭제">
+                    <i data-lucide="trash-2" size="20"></i>
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    lucide.createIcons();
+</script>
+{% endblock %}

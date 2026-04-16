@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>시스템 설정 - Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #050a14;
+            --card-bg: rgba(20, 30, 50, 0.7);
+            --accent: #00f2ff;
+            --text-primary: #ffffff;
+            --text-secondary: #a0aec0;
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        header {
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--glass-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(5, 10, 20, 0.8);
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 0.6rem 1rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .page-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.2rem;
+            margin: 0;
+        }
+
+        main {
+            padding: 1.5rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .config-card {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 1.5rem;
+            border: 1px solid var(--glass-border);
+            margin-bottom: 1.5rem;
+        }
+
+        .config-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            color: white;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+        }
+
+        .toggle-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+
+        .switch input { opacity: 0; width: 0; height: 0; }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #333;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px; width: 18px;
+            left: 4px; bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        .btn-save {
+            width: 100%;
+            padding: 1.2rem;
+            background: var(--accent);
+            color: black;
+            border: none;
+            border-radius: 16px;
+            font-size: 1rem;
+            font-weight: 700;
+            margin-top: 2rem;
+            cursor: pointer;
+        }
+
+        footer {
+            padding: 2rem;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="/portal/home" class="back-btn"><i class="fa-solid fa-arrow-left"></i> 이전</a>
+        <h1 class="page-title">시스템 글로벌 설정</h1>
+    </header>
+
+    <main>
+        <form id="configForm">
+            <div class="config-card">
+                <div class="config-title"><i class="fa-solid fa-display"></i> 서비스 기본 정보</div>
+                <div class="form-group">
+                    <label>플랫폼 명칭</label>
+                    <input type="text" name="site_name" value="{{ config.site_name }}">
+                </div>
+                <div class="toggle-group">
+                    <div>
+                        <div style="font-weight: 600; font-size: 0.9rem;">점검 모드 (Maintenance)</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">활성화 시 전 서비스 접속 제한</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" name="maintenance_mode" {% if config.maintenance_mode %}checked{% endif %}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="config-card">
+                <div class="config-title"><i class="fa-solid fa-building-columns"></i> 본사 정산 계좌 세팅</div>
+                <div class="form-group">
+                    <label>은행명</label>
+                    <input type="text" name="hq_bank" value="{{ config.hq_bank or '' }}" placeholder="예: 농협">
+                </div>
+                <div class="form-group">
+                    <label>계좌번호</label>
+                    <input type="text" name="hq_account" value="{{ config.hq_account or '' }}" placeholder="000-0000-0000-00">
+                </div>
+                <div class="form-group">
+                    <label>예금주</label>
+                    <input type="text" name="hq_holder" value="{{ config.hq_holder or '' }}" placeholder="예: (주)엠큐넷">
+                </div>
+            </div>
+
+            <button type="submit" class="btn-save">설정 저장하기</button>
+        </form>
+    </main>
+
+    <footer>
+        &copy; 2026 MQnet Global Config
+    </footer>
+</body>
+</html>

@@ -1,0 +1,386 @@
+{% extends "admin/base.html" %}
+{% set active_page = 'staff' %}
+
+{% block title %}인력 및 정산 관리 | MQnet Central{% endblock %}
+
+{% block extra_style %}
+<style>
+    :root {
+        --glass: rgba(15, 23, 42, 0.9);
+        --glass-border: rgba(255, 255, 255, 0.08);
+        --accent-blue: #3b82f6;
+        --accent-purple: #8b5cf6;
+        --accent-emerald: #10b981;
+    }
+
+    /* 초밀착 고단위 레이아웃 (High Density) */
+    .dashboard-container { animation: fadeIn 0.3s ease-out; max-width: 100%; padding: 0 5px; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* Compact Metrics */
+    .metrics-header { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.5rem; margin-bottom: 0.8rem; }
+    .metric-bubble { 
+        background: var(--glass); border: 1px solid var(--glass-border);
+        border-radius: 12px; padding: 0.6rem 1rem; display: flex; align-items: center; justify-content: space-between;
+    }
+    .metric-bubble h4 { margin: 0; font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; }
+    .metric-bubble .val { font-size: 1.1rem; font-weight: 900; color: #fff; font-family: 'Outfit', sans-serif; }
+
+    /* Ultra Compact Control Center */
+    .control-center { 
+        background: var(--glass); border: 1px solid var(--glass-border); border-radius: 12px; padding: 0.5rem 1rem;
+        display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem; margin-bottom: 1rem;
+    }
+    .filter-set { display: flex; align-items: center; gap: 8px; }
+    .input-box { background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; padding: 4px 10px; color: #fff; font-size: 0.8rem; outline: none; }
+
+    /* High Density Table */
+    .table-container { background: var(--glass); border-radius: 15px; padding: 0.8rem; border: 1px solid var(--glass-border); }
+    .wage-table { width: 100%; border-collapse: collapse; }
+    .wage-table thead th { border-bottom: 1px solid var(--glass-border); padding: 8px; color: var(--text-dim); font-size: 0.65rem; text-transform: uppercase; text-align: left; }
+    .wage-table tbody tr { background: transparent; border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.15s; cursor: pointer; }
+    .wage-table tbody tr:hover { background: rgba(255,255,255,0.04); }
+    .wage-table td { padding: 8px; border: none; font-size: 0.85rem; }
+
+    /* Functional Buttons (Compact) */
+    .btn-action { 
+        padding: 5px 12px; border-radius: 8px; border: none; font-weight: 700; font-size: 0.75rem; cursor: pointer;
+        display: flex; align-items: center; gap: 6px; transition: 0.2s; color: #fff;
+    }
+    .btn-primary { background: var(--accent-blue); }
+    .btn-success { background: var(--accent-emerald); }
+    .btn-outline { background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: #fff; }
+    .btn-action:hover { opacity: 0.8; }
+
+    .badge-time { background: rgba(59, 130, 246, 0.15); padding: 2px 8px; border-radius: 4px; font-weight: 800; color: var(--accent-blue); font-size: 0.75rem; }
+
+    @media print {
+        body { background: white !important; color: black !important; padding: 10px; font-size: 9pt; }
+        .no-print { display: none !important; }
+        .table-container { border: none !important; }
+        .wage-table td { border-bottom: 1px solid #ddd !important; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Title & Controls (Horizontal Alignment for Space) -->
+    <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem;">
+        <h2 style="font-size: 1.1rem; font-weight: 900; margin:0;">인력 및 정산 제어 센터 <span style="font-size:0.7rem; color:var(--text-dim); font-weight:400; margin-left:10px;">MQnet Professional High-Density Mode</span></h2>
+        <div class="no-print" style="display: flex; gap: 5px;">
+            <button onclick="showPinModal()" class="btn-action btn-outline"><i data-lucide="shield-check" size="12"></i> 보안</button>
+            <button onclick="printSection('worker-section')" class="btn-action btn-outline"><i data-lucide="printer" size="12"></i> 인쇄</button>
+        </div>
+    </div>
+
+    <!-- Triple Metric Strip (Horizontal) -->
+    <div class="metrics-header no-print">
+        <div class="metric-bubble">
+            <h4><i data-lucide="user-check" size="12"></i> 인원</h4>
+            <div class="val">{{ worker_reports|length }}명</div>
+        </div>
+        <div class="metric-bubble">
+            <h4><i data-lucide="clock" size="12"></i> 총 시간</h4>
+            {% set th = 0 %}{% for r in worker_reports %}{% set th = th + r.hours %}{% endfor %}
+            <div class="val">{{ "{:,.1f}".format(th) }}h</div>
+        </div>
+        <div class="metric-bubble">
+            <h4><i data-lucide="coins" size="12"></i> 정산 합계</h4>
+            {% set tw = 0 %}{% for r in worker_reports %}{% set tw = tw + r.expected_wage %}{% endfor %}
+            <div class="val">{{ "{:,.0f}".format(tw) }}원</div>
+        </div>
+    </div>
+
+    <!-- Integrated Filtering Panel -->
+    <div class="control-center no-print">
+        <form method="GET" style="display:flex; flex-wrap:wrap; gap:0.8rem; flex:1; align-items:center;">
+            {% if session['role'] == 'admin' %}
+            <div class="filter-set">
+                <select name="slug" class="input-box" style="min-width:110px;">
+                    {% for s in stores %}
+                    <option value="{{ s.id }}" {% if s.id == selected_slug %}selected{% endif %}>{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="filter-set">
+                <input type="date" name="start_date" class="input-box" value="{{ start_date }}">
+                <span style="color:var(--text-dim); font-size:0.7rem;">~</span>
+                <input type="date" name="end_date" class="input-box" value="{{ end_date }}">
+            </div>
+            <button type="submit" class="btn-action btn-primary">데이터 조회</button>
+        </form>
+        <div style="display: flex; gap: 5px;">
+            <button onclick="openBulkApproveModal()" class="btn-action btn-success"><i data-lucide="check-square" size="12"></i> 일괄승인</button>
+            <button onclick="location.href='/signup?role=worker&store_id={{ selected_slug }}'" class="btn-action btn-primary"><i data-lucide="user-plus" size="12"></i> 직원등록</button>
+        </div>
+    </div>
+
+    <!-- Main Data Table Area -->
+    <div class="printable-area" id="worker-section">
+        <div class="table-container">
+            <h3 style="margin: 0 0 0.8rem 0; font-size: 0.85rem; color:var(--accent-blue);"><i data-lucide="list" size="14" style="vertical-align:middle;"></i> 현장 근로자 정산 명세</h3>
+            <div style="overflow-x: auto;">
+                <table class="wage-table">
+                    <thead>
+                        <tr>
+                            <th>성명</th>
+                            <th>연락처</th>
+                            <th>시급</th>
+                            <th>시간</th>
+                            <th style="color:#fff;">지급액</th>
+                            <th class="no-print">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in worker_reports %}
+                        <tr onclick="toggleDetails('details-{{ loop.index }}')">
+                            <td style="font-weight: 800;">{{ report.user.full_name or report.user.username }}</td>
+                            <td style="color:var(--text-dim); font-size: 0.75rem;">{{ report.user.phone|format_phone }}</td>
+                            <td>{{ "{:,.0f}".format(report.user.hourly_rate or 10000) }}</td>
+                            <td><span class="badge-time">{{ report.hours }}h</span></td>
+                            <td style="font-weight: 900; color: var(--accent-blue);">{{ "{:,.0f}".format(report.expected_wage or 0) }}</td>
+                            <td class="no-print">
+                                <button class="btn-action btn-outline" style="padding:3px 6px;"
+                                        data-id="{{ report.user.id }}"
+                                        data-username="{{ report.user.username }}"
+                                        data-role="{{ report.user.role }}"
+                                        data-store="{{ report.user.store_id or '' }}"
+                                        data-fullname="{{ report.user.full_name or '' }}"
+                                        data-phone="{{ report.user.phone or '' }}"
+                                        data-cstart="{{ report.user.contract_start or '' }}"
+                                        data-cend="{{ report.user.contract_end or '' }}"
+                                        data-schedule='{{ report.user.work_schedule|tojson|safe if report.user.work_schedule else "{}" }}'
+                                        onclick="event.stopPropagation(); openEditModal(this.dataset.id, this.dataset.username, this.dataset.role, this.dataset.store, this.dataset.fullname, this.dataset.phone, this.dataset.rate, this.dataset.cstart, this.dataset.cend, this.dataset.schedule)">
+                                    <i data-lucide="edit-3" size="11"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr id="details-{{ loop.index }}" style="display:none;" class="no-print">
+                            <td colspan="6" style="padding: 5px 15px;">
+                                <div style="background:rgba(255,255,255,0.02); border-radius:10px; padding:0.8rem; border:1px dashed var(--glass-border);">
+                                    <table style="width:100%; font-size:0.75rem; border-collapse:collapse;">
+                                        <thead><tr style="color:var(--text-dim); border-bottom:1px solid rgba(255,255,255,0.05);"><th style="padding:5px;">날짜</th><th style="padding:5px;">출근</th><th style="padding:5px;">퇴근</th><th style="padding:5px;">근무분</th></tr></thead>
+                                        <tbody>
+                                            {% for det in report.details %}
+                                            <tr style="border-bottom:1px solid rgba(255,255,255,0.02);"><td style="padding:4px 5px;">{{ det.date }}</td><td style="padding:4px 5px;">{{ det.start }}</td><td style="padding:4px 5px;">{{ det.end }}</td><td style="padding:4px 5px;">{{ det.mins }}분</td></tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" style="padding:30px; text-align:center; color:var(--text-dim); font-size:0.8rem;">데이터가 없습니다.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {% if session['role'] in ['admin', 'staff'] %}
+    <div class="printable-area" id="partner-section" style="margin-top:1rem;">
+        <div class="table-container" style="border-left: 3px solid var(--neon-warning);">
+            <h3 style="margin: 0 0 0.8rem 0; font-size: 0.85rem; color: #f59e0b;"><i data-lucide="award" size="14" style="vertical-align:middle;"></i> 파트너 수당 (10%)</h3>
+            <div style="overflow-x: auto;">
+                <table class="wage-table">
+                    <thead><tr><th>명칭</th><th>연락처</th><th>매출</th><th>수당</th><th class="no-print">상태</th></tr></thead>
+                    <tbody>
+                        {% set found = false %}
+                        {% for report in partner_reports %}
+                            {% if session['role'] == 'admin' or report.user.id == session['user_id'] %}
+                                {% set found = true %}
+                                <tr>
+                                    <td style="font-weight: 800;">{{ report.user.full_name or report.user.username }}</td>
+                                    <td style="font-size:0.75rem; color:var(--text-dim);">{{ report.user.phone|format_phone }}</td>
+                                    <td style="font-size:0.8rem;">{{ "{:,.0f}".format(report.period_sales) }}</td>
+                                    <td style="font-weight: 900; color: #f59e0b;">{{ "{:,.0f}".format(report.commission) }}</td>
+                                    <td class="no-print"><span style="font-size:0.65rem; color:var(--accent-emerald);">LIVE</span></td>
+                                </tr>
+                            {% endif %}
+                        {% endfor %}
+                        {% if not found %}<tr><td colspan="5" style="padding:20px; text-align:center; color:var(--text-dim); font-size:0.8rem;">데이터가 없습니다.</td></tr>{% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Bulk Approve Modal -->
+    <div id="bulk-approve-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:12000; display:none; justify-content:center; align-items:center; backdrop-filter:blur(5px);">
+        <div style="background:#0f172a; border:1px solid var(--accent-emerald); border-radius:20px; padding:1.5rem; width:340px;">
+            <p style="margin:0 0 1rem 0; font-weight:800; font-size:0.9rem;">일괄 승인 프로세스</p>
+            <div id="pending-list-container" style="background:rgba(255,255,255,0.03); border-radius:15px; max-height:200px; overflow-y:auto; margin-bottom:1rem;"></div>
+            <input type="password" id="bulk-pin" maxlength="4" placeholder="PIN" style="width:100%; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; padding:12px; border-radius:12px; text-align:center; font-size:1.5rem; letter-spacing:10px; margin-bottom:1rem;">
+            <div style="display:flex; gap:8px;">
+                <button onclick="submitBulkApprove()" style="flex:2;" class="btn-action btn-primary">선택 승인</button>
+                <button onclick="document.getElementById('bulk-approve-modal').style.display='none'" class="btn-action btn-outline">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PIN Modal -->
+    <div id="pin-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:12000; display:none; justify-content:center; align-items:center;">
+        <div style="background:#0f172a; border:1px solid var(--glass-border); border-radius:20px; padding:1.5rem; width:300px; text-align:center;">
+            <p style="margin-bottom:1rem; font-weight:800;">보안 설정</p>
+            <input type="password" id="old-pin" maxlength="4" placeholder="현재 PIN" style="width:100%; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; padding:10px; border-radius:10px; margin-bottom:8px; text-align:center;">
+            <input type="password" id="new-pin" maxlength="4" placeholder="신규 PIN" style="width:100%; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:#fff; padding:10px; border-radius:10px; margin-bottom:1rem; text-align:center;">
+            <div style="display:flex; gap:8px;">
+                <button onclick="updatePin()" class="btn-action btn-primary" style="flex:1;">변경</button>
+                <button onclick="document.getElementById('pin-modal').style.display='none'" class="btn-action btn-outline">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 사용자 수정 모달 (항상 최상위 레이어) -->
+    <div id="edit-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:15000; align-items:center; justify-content:center; backdrop-filter:blur(8px);">
+        <div style="background:#0f172a; border:1px solid var(--glass-border); border-radius:24px; padding:1.5rem; width:100%; max-width:500px; max-height:90vh; overflow-y:auto; box-shadow:0 25px 50px rgba(0,0,0,0.5);">
+            <h3 id="edit-title" style="margin:0 0 1.2rem 0; font-size:1rem; font-weight:900; color:var(--accent-blue);">직원 정보 전문 수정</h3>
+            
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:1rem;">
+                <div>
+                    <label style="font-size:0.65rem; color:var(--text-dim); display:block; margin-bottom:4px;">성명</label>
+                    <input type="text" id="edit-fullname" class="input-box" style="width:100%; box-sizing:border-box;">
+                </div>
+                <div>
+                    <label style="font-size:0.65rem; color:var(--text-dim); display:block; margin-bottom:4px;">연락처</label>
+                    <input type="text" id="edit-phone" class="input-box" style="width:100%; box-sizing:border-box;">
+                </div>
+                <div>
+                    <label style="font-size:0.65rem; color:var(--text-dim); display:block; margin-bottom:4px;">시급 (원)</label>
+                    <input type="number" id="edit-rate" class="input-box" style="width:100%; box-sizing:border-box;">
+                </div>
+                <div>
+                    <label style="font-size:0.65rem; color:var(--text-dim); display:block; margin-bottom:4px;">직무</label>
+                    <input type="text" id="edit-position" class="input-box" style="width:100%; box-sizing:border-box;" placeholder="예: 홀서빙, 주방">
+                </div>
+            </div>
+
+            <div style="margin-bottom:1.2rem; border-top:1px solid var(--glass-border); padding-top:1rem;">
+                <p style="font-size:0.75rem; font-weight:800; color:#fff; margin-bottom:8px;"><i data-lucide="calendar" size="12"></i> 임시직/계약 기간 (선택)</p>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <div>
+                        <label style="font-size:0.6rem; color:var(--text-dim); display:block; margin-bottom:4px;">시작일</label>
+                        <input type="date" id="edit-cstart" class="input-box" style="width:100%; box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.6rem; color:var(--text-dim); display:block; margin-bottom:4px;">종료일</label>
+                        <input type="date" id="edit-cend" class="input-box" style="width:100%; box-sizing:border-box;">
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-bottom:1.5rem; border-top:1px solid var(--glass-border); padding-top:1rem;">
+                <p style="font-size:0.75rem; font-weight:800; color:#fff; margin-bottom:8px;"><i data-lucide="clock" size="12"></i> 요일별 출퇴근 시간 설정</p>
+                <div style="display:grid; gap:6px;">
+                    {% for day_code, day_name in [('mon','월'),('tue','화'),('wed','수'),('thu','목'),('fri','금'),('sat','토'),('sun','일')] %}
+                    <div style="display:grid; grid-template-columns: 20px 1fr 1fr; gap:10px; align-items:center;">
+                        <span style="font-size:0.7rem; font-weight:800; color:var(--text-dim);">{{ day_name }}</span>
+                        <input type="time" id="sched-{{ day_code }}-in" class="input-box" style="font-size:0.7rem; padding:2px 5px;">
+                        <input type="time" id="sched-{{ day_code }}-out" class="input-box" style="font-size:0.7rem; padding:2px 5px;">
+                    </div>
+                    {% endfor %}
+                </div>
+                <p style="font-size:0.6rem; color:var(--text-dim); margin-top:8px;">* 정해진 시간 전후 5분 이내에만 QR 스캔이 가능하며, 해당 시간으로 자동 기록됩니다.</p>
+            </div>
+
+            <div style="display:flex; gap:10px;">
+                <button onclick="saveUser()" class="btn-action btn-primary" style="flex:1.5; justify-content:center; padding:10px;">관리 데이터 업데이트</button>
+                <button onclick="closeEditModal()" class="btn-action btn-outline" style="flex:1; justify-content:center; padding:10px;">취소</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    function toggleDetails(id) { const el = document.getElementById(id); el.style.display = el.style.display === 'none' ? 'table-row' : 'none'; }
+    function printSection(sectionId) { window.print(); }
+    async function openBulkApproveModal() {
+        const res = await fetch(`/api/{{ selected_slug }}/attendance/pending`);
+        const data = await res.json();
+        const container = document.getElementById('pending-list-container');
+        container.innerHTML = data.length === 0 ? '<div style="padding:20px; text-align:center; font-size:0.75rem;">요청 없음</div>' : data.map(att => `<div style="display:flex; align-items:center; gap:10px; padding:10px; border-bottom:1px solid rgba(255,255,255,0.03);"><input type="checkbox" class="bulk-check" value="${att.id}" checked><div style="font-size:0.8rem; font-weight:700;">${att.user_name}</div></div>`).join('');
+        document.getElementById('bulk-approve-modal').style.display = 'flex';
+    }
+    async function submitBulkApprove() {
+        const pin = document.getElementById('bulk-pin').value;
+        const selectedIds = Array.from(document.querySelectorAll('.bulk-check:checked')).map(cb => parseInt(cb.value));
+        if (!pin || selectedIds.length === 0) return;
+        const res = await fetch(`/api/{{ selected_slug }}/attendance/bulk-approve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: pin, ids: selectedIds }) });
+        const d = await res.json();
+        if (d.status === 'success') location.reload(); else alert(d.message);
+    }
+    function showPinModal() { document.getElementById('pin-modal').style.display = 'flex'; }
+    async function updatePin() {
+        const res = await fetch(`/api/{{ selected_slug }}/attendance/update-pin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ old_pin: document.getElementById('old-pin').value, new_pin: document.getElementById('new-pin').value }) });
+        const d = await res.json();
+        if (d.status === 'success') { alert('변경됨'); document.getElementById('pin-modal').style.display = 'none'; } else alert(d.message);
+    }
+
+    /* Edit Modal Logic */
+    let currentEditId = null;
+    function openEditModal(id, username, role, store, fullname, phone, rate, cstart, cend, scheduleStr) {
+        currentEditId = id;
+        document.getElementById('edit-title').innerText = `${fullname || username} 직원 관리 설정`;
+        document.getElementById('edit-fullname').value = fullname || '';
+        document.getElementById('edit-phone').value = phone || '';
+        document.getElementById('edit-rate').value = rate || 10000;
+        document.getElementById('edit-cstart').value = cstart || '';
+        document.getElementById('edit-cend').value = cend || '';
+        
+        let schedule = {};
+        try {
+            schedule = typeof scheduleStr === 'string' ? JSON.parse(scheduleStr) : (scheduleStr || {});
+        } catch(e) { console.error("Schedule Parse Error", e); }
+
+        const days = ['mon','tue','wed','thu','fri','sat','sun'];
+        days.forEach(d => {
+            const entry = schedule[d] || {};
+            document.getElementById(`sched-${d}-in`).value = entry.in || '';
+            document.getElementById(`sched-${d}-out`).value = entry.out || '';
+        });
+
+        document.getElementById('edit-modal').style.display = 'flex';
+    }
+    
+    function closeEditModal() { document.getElementById('edit-modal').style.display = 'none'; }
+    
+    async function saveUser() {
+        if(!currentEditId) return;
+        
+        const schedule = {};
+        const days = ['mon','tue','wed','thu','fri','sat','sun'];
+        days.forEach(d => {
+            const tin = document.getElementById(`sched-${d}-in`).value;
+            const tout = document.getElementById(`sched-${d}-out`).value;
+            if(tin || tout) schedule[d] = { in: tin, out: tout };
+        });
+
+        const payload = {
+            full_name: document.getElementById('edit-fullname').value,
+            phone: document.getElementById('edit-phone').value,
+            hourly_rate: parseInt(document.getElementById('edit-rate').value) || 10000,
+            contract_start: document.getElementById('edit-cstart').value || null,
+            contract_end: document.getElementById('edit-cend').value || null,
+            work_schedule: schedule
+        };
+        
+        const res = await fetch(`/api/staff/${currentEditId}/update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            location.reload();
+        } else {
+            alert('오류: ' + data.message);
+        }
+    }
+</script>
+{% endblock %}

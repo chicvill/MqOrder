@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ko">
+{% from 'macros/ai_assistant_ui.html' import render_ai_assistant %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ store.name }} - 통합 카운터</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root { 
+            --royal-red: #8B0000;
+            --royal-gold: #D4AF37;
+            --bg-dark: #000000;
+            --card-bg: #111111;
+            --border-gold: rgba(212, 175, 55, 0.3);
+            --text-muted: #888888;
+        }
+        
+        @keyframes mic-pulse {
+            0% { transform: scale(1); box-shadow: 0 10px 30px rgba(59,130,246,0.6); }
+            50% { transform: scale(1.1); box-shadow: 0 15px 45px rgba(239,68,68,0.8); }
+            100% { transform: scale(1); box-shadow: 0 10px 30px rgba(59,130,246,0.6); }
+        }
+        #mgr-mic-btn.listening {
+            animation: mic-pulse 1.5s infinite ease-in-out;
+            background: #ef4444 !important;
+            border-color: #f87171 !important;
+        }
+        
+        body { background: var(--bg-dark); color: white; font-family: 'Pretendard', sans-serif; margin: 0; overflow: hidden; }
+        
+        header { 
+            background: #111; padding: 15px 25px; border-bottom: 2px solid #222;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .main-layout { display: flex; flex-direction: column; height: calc(100vh - 70px); position: relative; }
+
+        /* 좌측 전용 사이드바 (호출 현황) */
+        .sidebar { 
+            width: 320px; background: #0a0a0a; border-right: 1px solid #222;
+            display: flex; flex-direction: column; transition: all 0.3s;
+            position: relative; z-index: 50;
+        }
+        
+        .tables-area { flex: 1; padding: 25px; overflow-y: auto; background: #000; }
+
+        .tables-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 25px;
+            padding: 25px;
+        }
+
+        /* [실버 개편] 테이블 카드 스타일 (큼직하고 단순하게) */
+        .table-card {
+            background: #111;
+            border: 2px solid #333;
+            border-radius: 20px;
+            padding: 25px;
+            position: relative;
+            transition: all 0.2s;
+            display: flex; flex-direction: column;
+            min-height: 250px;
+        }
+        .table-card:hover { border-color: var(--royal-gold); background: #1a1a1a; }
+        .table-card.active-table { border: 4px solid #fff; }
+        .table-card.ready-to-serve { border: 4px solid var(--royal-gold); background: rgba(212, 175, 55, 0.05); }
+
+        .status-badge {
+            position: absolute; top: 25px; right: 25px;
+            font-size: 1.1rem; padding: 6px 15px; border-radius: 30px; font-weight: 900;
+        }
+        .status-pending { background: #333; color: #fff; }
+        .status-ready { background: var(--royal-gold); color: #000; animation: blink 1s infinite; }
+        .status-served { background: #0064ff; color: #fff; }
+
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        .items-list { margin: 20px 0; flex: 1; font-size: 1.3rem; line-height: 1.4; color: #eee; font-weight: 700; }
+        .item-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+
+        .price-total { 
+            font-size: 2.2rem; font-weight: 1000; color: var(--royal-gold);
+            border-top: 2px dashed #333; padding-top: 15px; margin-top: 10px;
+        }
+
+        .action-btn {
+            width: 100%; padding: 20px; border: none; border-radius: 15px;
+            font-weight: 1000; cursor: pointer; margin-top: 20px;
+            font-size: 1.4rem;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .btn-serve { background: var(--royal-gold); color: black; }
+        .btn-pay { background: var(--royal-red); color: white; }
+        .btn-waiting { background: #222; color: #444; }
+
+        /* [개조] 하단 업무 영역 (플로팅 고정 구조) */
+        .bottom-task-floor {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 0 30px 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            pointer-events: none; /* 배경 클릭 방해 금지 */
+            z-index: 2000;
+        }
+        #call-stack, #wait-stack {
+            position: relative;
+            width: 280px; height: 180px;
+            pointer-events: auto; /* 메모지는 클릭 가능해야 함 */
+        }
+
+        .post-it { 
+            position: absolute; bottom: 0; left: 0; width: 100%;
+        }
+        
+        /* 스택 카운터 배지 */
+        .stack-count-badge {
+            position: absolute;
+            top: -10px; right: -5px; /* 안쪽으로 살짝 이동해 잘림 방지 */
+            background: #ef4444;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 900;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            z-index: 1001;
+            border: 1.5px solid #fff;
+        }
+        .notif {
+            padding: 18px; border-radius: 12px; color: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            animation: slideIn 0.3s ease-out;
+            border-left: 5px solid rgba(255,255,255,0.3);
+        }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* 머지된 선결제 스타일 */
+        .prepaid-badge {
+            background: var(--royal-gold); color: #000; font-size: 0.75rem; font-weight: 900;
+            padding: 4px 8px; border-radius: 4px; display: inline-block; margin-bottom: 10px;
+        }
+        /* [신규] 메모지(Post-it) 스타일 */
+        .post-it {
+            background: #feeaab;
+            color: #222;
+            padding: 18px;
+            margin: 15px 10px;
+            border-radius: 2px;
+            box-shadow: 3px 6px 15px rgba(0,0,0,0.4);
+            transform: rotate(-1.5deg);
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            cursor: pointer;
+            border-bottom: 3px solid rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .post-it:nth-child(even) { transform: rotate(1.8deg); background: #fef08a; }
+        .post-it:hover { transform: scale(1.05) rotate(0deg); z-index: 100 !important; box-shadow: 0 15px 35px rgba(0,0,0,0.6); }
+        .post-it::before {
+            content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 8px; background: rgba(0,0,0,0.05);
+        }
+        .waiting-note { background: #bae6fd !important; transform: rotate(1deg); }
+        .waiting-note:nth-child(even) { background: #bae6fd !important; transform: rotate(-1.2deg); }
+
+        .note-header { display: flex; justify-content: space-between; font-size: 0.65rem; font-weight: 800; margin-bottom: 5px; opacity: 0.7; }
+        .note-content { font-size: 0.95rem; font-weight: 900; line-height: 1.3; }
+        .note-footer { margin-top: 8px; font-size: 0.7rem; text-align: right; font-weight: bold; opacity: 0.6; }
+        
+        /* [신규] 시스템 상태 표시등 스타일 */
+        .status-badge-container { display: flex; align-items: center; gap: 12px; margin-left: 15px; }
+        .status-item { display: flex; align-items: center; gap: 4px; font-size: 0.65rem; font-weight: 800; color: #666; }
+        .status-dot { width: 7px; height: 7px; border-radius: 50%; opacity: 0.8; }
+        .dot-green { background: #10b981; box-shadow: 0 0 6px #10b981; }
+        .dot-orange { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+        .dot-red { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+        
+    </style>
+</head>
+<body>
+    <header style="justify-content: space-between; padding: 15px 30px; align-items: center; background: #000; border-bottom: 3px solid var(--royal-gold);">
+        <h1 style="margin:0; font-size:1.8rem; color:var(--royal-gold); font-weight: 1000; letter-spacing: -1.5px;">🦁 왕궁 중화요리 카운터</h1>
+        <div class="status-badge-container">
+            <div class="status-item" style="font-size: 0.8rem;"><span id="dot-svr" class="status-dot dot-green"></span> 서버 OK</div>
+            <div class="status-item" style="font-size: 0.8rem;"><span id="dot-db" class="status-dot dot-green"></span> 데이터 OK</div>
+            
+            <button onclick="location.reload()" style="background: #222; color: #fff; border: 1px solid #444; padding: 10px 18px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-left: 10px;">새로고침</button>
+        </div>
+    </header>
+
+    <!-- [AI UI는 매크로에서 렌더링됨] -->
+
+    <div class="main-layout" style="overflow-y: auto; height: calc(100vh - 60px);"> 
+        <!-- 중앙: 테이블 현황 -->
+        <div class="tables-area">
+            <div class="tables-grid" id="tables-grid"> <!-- 하단 공간 확보 제거 -->
+                <div style="text-align: center; color: #444; padding: 100px 0;">데이터를 불러오는 중...</div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- 결제 모달 (기존 고급 기능 유지) -->
+    <div id="payment-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:3000; align-items:center; justify-content:center;">
+        <div style="background:#111; border:1px solid #333; padding:30px; border-radius:20px; width:400px; text-align:center;">
+            <h2 id="payment-title" style="margin-top:0;">결제 확인</h2>
+            <div id="payment-total-price" style="font-size:2rem; font-weight:900; color:var(--royal-gold); margin:20px 0;">0원</div>
+            
+            <input type="tel" id="cust-phone" placeholder="포인트 적립 휴대폰 번호" style="width:100%; padding:15px; background:#000; border:1px solid #444; color:#fff; border-radius:10px; margin-bottom:15px; text-align:center; font-size:1.2rem;">
+            
+            <div id="point-info-area" style="display:none; background:rgba(212,175,55,0.1); padding:15px; border-radius:10px; margin-bottom:20px; text-align:left;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;"><span>보유 포인트:</span><span id="cust-points" style="font-weight:bold;">0 P</span></div>
+                <button id="use-points-btn" style="width:100%; background:var(--royal-gold); border:none; padding:10px; border-radius:6px; font-weight:bold; cursor:pointer; display:none;">10,000 P 사용하기</button>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <button class="action-btn btn-serve" id="payment-final-btn" style="margin:0;">결제 완료</button>
+                <button onclick="closePaymentModal()" style="background:#333; border:none; color:#fff; border-radius:10px;">닫기</button>
+                <button id="show-bank-qr-btn" style="grid-column:span 2; background:#0064ff; border:none; color:#fff; padding:12px; border-radius:10px; margin-top:10px; cursor:pointer;">토스 계좌이체 QR</button>
+                <button id="view-mobile-receipt-btn" style="grid-column:span 2; background:#222; border:none; color:#fff; padding:10px; border-radius:10px; font-size:0.8rem; cursor:pointer;">모바일 영수증 보기</button>
+            </div>
+
+            <div id="payment-qr-area" style="display:none; margin-top:20px; padding:15px; background:#fff; border-radius:10px; color:#000;">
+                <div id="payment-qrcode" style="display:inline-block;"></div>
+                <p style="font-size:0.8rem; font-weight:bold; margin-top:10px;">토스 송금 링크 QR</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let sessions = {};
+        
+        socket.on('connect', () => {
+            socket.emit('join', { store_id: '{{ store.id }}' });
+            forceReSync();
+        });
+
+        socket.on('new_order', forceReSync);
+        socket.on('order_status_update', forceReSync);
+        socket.on('table_status_update', (data) => {
+            if (data.status === 'paid') {
+                // [신규] 결제 완료 시 음성 안내
+                let msg = `${data.table_id}번 테이블, 총 ${data.total_price.toLocaleString()}원 결제 완료되었습니다. `;
+                if (data.point_info) {
+                    msg += `${data.point_info.acc_amount.toLocaleString()}포인트가 적립되어, 현재 총 ${data.point_info.total_points.toLocaleString()}포인트입니다. `;
+                    if (data.point_info.is_anniversary) msg += "단골 기념 보너스 포인트가 포함되었습니다! ";
+                }
+                msg += "안녕히 가세요!";
+                speakAdminResponse(msg);
+            }
+            forceReSync();
+        });
+        socket.on('bank_deposit_received', (d) => createNotif('pay', d));
+
+
+        async function forceReSync() {
+            try {
+                const res = await fetch(`/api/{{ store.id }}/orders`);
+                const orders = await res.json();
+                sessions = {};
+                orders.forEach(o => {
+                    if (o.status === 'cancelled' || o.status === 'paid') return;
+                    const sid = o.session_id || `legacy-${o.table_id}`;
+                    if (!sessions[sid]) sessions[sid] = { table_id: o.table_id, orders: {}, total: 0, status: 'pending', is_prepaid: false, method_name: '' };
+                    sessions[sid].orders[o.id] = o;
+                    if(o.is_prepaid) {
+                        sessions[sid].is_prepaid = true;
+                        // 한글 명칭 변환
+                        const m = o.payment_method;
+                        const mName = (m === 'card') ? '카드' : (m === 'bank' ? '계좌이체' : (m === 'postpaid' ? '후불' : (m === 'cash' ? '현금' : '결제됨')));
+                        sessions[sid].method_name = mName;
+                    }
+                });
+                render();
+            } catch (e) { 
+                console.error(e);
+                updateStatusUI('svr', 'red');
+            }
+        }
+
+        // [신규] 시스템 헬스 체크 로직
+        async function checkSystemHealth() {
+            try {
+                const res = await fetch('/api/health');
+                const data = await res.json();
+                
+                updateStatusUI('svr', data.server === 'online' ? 'green' : 'red');
+                if (data.db === 'online') updateStatusUI('db', 'green');
+                else if (data.db.startsWith('error')) updateStatusUI('db', 'orange');
+                else updateStatusUI('db', 'red');
+                
+            } catch (e) {
+                updateStatusUI('svr', 'red');
+                updateStatusUI('db', 'red');
+            }
+        }
+
+        function updateStatusUI(type, color) {
+            const el = document.getElementById(`dot-${type}`);
+            if(!el) return;
+            el.className = `status-dot dot-${color}`;
+        }
+        
+        // 10초마다 헬스체크 실행
+        setInterval(checkSystemHealth, 10000);
+        checkSystemHealth();
+
+        function render() {
+            const grid = document.getElementById('tables-grid');
+            grid.innerHTML = '';
+            const list = Object.values(sessions).sort((a,b) => a.table_id - b.table_id);
+            if(list.length === 0) { 
+                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:100px; color:#444;">현재 홀에 진행 중인 주문이 없습니다.</div>'; 
+                return; 
+            }
+
+            list.forEach(s => {
+                const sid = Object.keys(sessions).find(k => sessions[k] === s);
+                const ol = Object.values(s.orders);
+                const sTotal = ol.reduce((sum, o) => sum + (o.items||[]).filter(it=>it.status!=='cancelled').reduce((ism, it) => ism + (it.price * it.quantity), 0), 0);
+                
+                // 결정적 상태 계산 (실버 모드 최적화)
+                const anyReady = ol.some(o => o.status === 'ready');
+                const anyPending = ol.some(o => o.status === 'pending');
+                
+                // 하나라도 'ready'면 서빙하기가 우선, 그 외엔 모두 served 여부로 판단
+                let currentStatus = 'pending';
+                if (anyReady) {
+                    currentStatus = 'ready';
+                } else if (!anyPending && ol.length > 0) {
+                    currentStatus = 'served';
+                }
+
+                // 현금영수증 신청 여부
+                const crQuery = ol.find(o => o.cash_receipt_type);
+                let crHtml = crQuery ? `
+                    <div style="margin-top:10px; padding:8px; background:rgba(59,130,246,0.15); border-radius:8px; font-size:0.8rem; color:#60a5fa; border:1px solid rgba(59,130,246,0.3);">
+                        📄 현금영수증: ${crQuery.cash_receipt_type === 'personal' ? '개인' : '사업자'} (${crQuery.cash_receipt_number})
+                    </div>
+                ` : '';
+
+                const card = document.createElement('div');
+                card.className = `table-card ${currentStatus === 'ready' ? 'ready-to-serve' : ''}`;
+                card.innerHTML = `
+                    <div class="status-badge status-${currentStatus}">${currentStatus==='ready'?'서빙대기':(currentStatus==='served'?'식사중':'조리중')}</div>
+                    <div style="font-size:1.8rem; font-weight: 1000; color:#fff; margin-bottom:10px;">테이블 : #${s.table_id}</div>
+                    
+                    ${s.is_prepaid ? `
+                        <div class="prepaid-badge" style="background: #27ae60; color: #fff;">
+                            ✨ 선결제 완료 (${s.method_name || '결제됨'})
+                        </div>` : ''}
+                    <div class="items-list">
+                        ${ol.flatMap(o => (o.items||[]).filter(it=>it.status!=='cancelled').map(it => `<div class="item-row"><span>${it.name}</span><span>x${it.quantity}</span></div>`)).join('')}
+                    </div>
+                    ${crHtml}
+                    <div class="price-total">${sTotal.toLocaleString()}원</div>
+                    <div class="btns">
+                        ${renderActionBtn(sid, currentStatus, s.is_prepaid, s.method_name)}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        function renderActionBtn(sid, status, isPrepaid, methodName) {
+            if (status === 'ready') return `<button class="action-btn btn-serve" onclick="executeServe('${sid}')">서빙하기</button>`;
+            if (status === 'served') {
+                if (isPrepaid) {
+                    return `<button class="action-btn" style="background: #27ae60; color: #fff;" onclick="confirmPrepaidExit('${sid}', '${methodName}')">퇴실 확인</button>`;
+                }
+                return `<button class="action-btn btn-pay" onclick="executePay('${sid}')">결제/퇴실</button>`;
+            }
+            return `<button class="action-btn btn-waiting" disabled>조리 중...</button>`;
+        }
+
+        async function executeServe(sid) {
+            socket.emit('set_served', { store_id: '{{ store.id }}', session_id: sid, table_id: sessions[sid].table_id });
+            setTimeout(forceReSync, 300);
+        }
+
+        function executePay(sid) {
+            const session = sessions[sid];
+            const modal = document.getElementById('payment-modal');
+            const phoneInput = document.getElementById('cust-phone');
+            const totalDisplay = document.getElementById('payment-total-price');
+            
+            totalDisplay.innerText = Object.values(session.orders).reduce((sum, o) => sum + o.total_price, 0).toLocaleString() + '원';
+            modal.style.display = 'flex';
+            
+            document.getElementById('payment-final-btn').onclick = () => {
+                socket.emit('set_paid', { 
+                    store_id: '{{ store.id }}', 
+                    session_id: sid, 
+                    table_id: session.table_id,
+                    phone: phoneInput.value.replace(/[^0-9]/g, '')
+                });
+                closePaymentModal();
+                setTimeout(forceReSync, 300);
+            };
+
+            // QR 로직
+            const qrBtn = document.getElementById('show-bank-qr-btn');
+            qrBtn.onclick = () => {
+                const qrArea = document.getElementById('payment-qr-area');
+                document.getElementById('payment-qrcode').innerHTML = '';
+                const sum = Object.values(session.orders).reduce((sm, o) => sm + o.total_price, 0);
+                const orderNo = Object.values(session.orders).find(o => o.order_no)?.order_no || 'T'+session.table_id;
+                const payUrl = `${window.location.origin}/{{ store.id }}/payment_info?amount=${sum}&memo=${orderNo}`;
+                new QRCode(document.getElementById('payment-qrcode'), { text: payUrl, width: 150, height: 150 });
+                qrArea.style.display = 'block';
+            };
+
+            // 영수증 버튼
+            const rcptBtn = document.getElementById('view-mobile-receipt-btn');
+            const firstO = Object.values(session.orders)[0];
+            rcptBtn.onclick = () => window.open(`/receipt/${firstO.id}`, '_blank');
+        }
+
+        function confirmPrepaidExit(sid, methodName) {
+            const msg = `${methodName}으로 미리 결제하셨지요? 감사합니다.\n\n해당 테이블을 퇴실 처리하시겠습니까?`;
+            if (confirm(msg)) {
+                socket.emit('set_paid', { 
+                    store_id: '{{ store.id }}', 
+                    session_id: sid, 
+                    table_id: sessions[sid].table_id 
+                });
+                setTimeout(forceReSync, 300);
+            }
+        }
+
+        function closePaymentModal() { document.getElementById('payment-modal').style.display = 'none'; }
+        function createNotif(type, d) {
+            // [입금 알림만 브라우저 기본 알림 형식으로 활용하거나 별도 처리]
+            if (type === 'pay') {
+                loadAgenda(); // 그냥 아젠다 갱신 유도
+                try { new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3").play(); } catch(e){}
+            }
+        }
+
+        // [신규] 관리자 전용 AI 브리핑 (음성인식 + TTS)
+        let adminRec;
+        function toggleAdminVoice() {
+            const btn = document.getElementById('mgr-mic-btn');
+            if(!btn) return;
+            
+            if(btn.classList.contains('listening')) { if(adminRec) adminRec.stop(); return; }
+            
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if(!SR) return alert('음성 인식을 지원하지 않는 브라우저입니다.');
+            
+            adminRec = new SR();
+            adminRec.lang = 'ko-KR';
+            adminRec.onstart = () => { 
+                btn.classList.add('listening'); 
+                window.speechSynthesis.cancel(); // 이전 말 끊기
+            };
+            adminRec.onend = () => { btn.classList.remove('listening'); };
+            adminRec.onresult = (e) => {
+                const query = e.results[0][0].transcript;
+                sendAdminChat(query);
+            };
+            adminRec.start();
+        }
+
+        async function sendAdminChat(msg) {
+            try {
+                const res = await fetch(`/api/{{ store.id }}/admin-chat`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ message: msg })
+                });
+                const data = await res.json();
+                if(data.reply) {
+                    speakAdminResponse(data.reply);
+                    // AI UI에 텍스트 표시 (render_ai_assistant 매크로 내부 접근 필요 시 로직 추가)
+                    const aiReplyEl = document.getElementById('ai-assistant-reply');
+                    if(aiReplyEl) aiReplyEl.innerHTML = `<b>비서:</b> ${data.reply}`;
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function speakAdminResponse(text) {
+            if(!window.speechSynthesis) return;
+            const uttr = new SpeechSynthesisUtterance(text);
+            uttr.lang = 'ko-KR';
+            uttr.rate = 1.0;
+            uttr.pitch = 1.0;
+            const voices = window.speechSynthesis.getVoices();
+            const v = voices.find(v => v.lang === 'ko-KR' && (v.name.includes('Yuna') || v.name.includes('Google')));
+            if(v) uttr.voice = v;
+            window.speechSynthesis.speak(uttr);
+        }
+
+        // 마이크 버튼 이벤트 연결
+        window.addEventListener('load', () => {
+            const mic = document.getElementById('mgr-mic-btn');
+            if(mic) mic.onclick = toggleAdminVoice;
+        });
+    </script>
+
+    <!-- [AI 비서] 매장별 전용 데이터(store.id) 연동 -->
+    {{ render_ai_assistant(store.id) }}
+
+    <script>
+        // AI 비서 로딩 등과 충돌하지 않도록 이벤트 리스너 형식으로 아이콘 렌더링
+        window.addEventListener('load', () => {
+             if(window.lucide) {
+                 window.lucide.createIcons();
+             }
+    </script>
+</body>
+</html>

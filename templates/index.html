@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="ko">
+{% from 'macros/ai_assistant_ui.html' import render_ai_assistant %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQnet | Smart Automation & POS</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v={{ range(1, 9999) | random }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mqnet_style.css') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#0F172A">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* [MQnet Premium Preloader Style] */
+        #preloader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 99999; transition: opacity 0.8s ease, visibility 0.8s;
+        }
+        .loader-content { text-align: center; position: relative; }
+        .loader-ring {
+            width: 120px; height: 120px; border-radius: 50%;
+            border: 3px solid rgba(16, 185, 129, 0.1);
+            border-top: 3px solid #10b981;
+            animation: spin 1.5s linear infinite;
+            filter: drop-shadow(0 0 15px rgba(16, 185, 129, 0.4));
+        }
+        .loader-logo {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: 1000; font-size: 1.4rem;
+            color: #fff; letter-spacing: -1px; animation: pulse 2s ease-in-out infinite;
+        }
+        .loader-text {
+            margin-top: 40px; color: #94a3b8; font-size: 1rem; font-weight: 800;
+            letter-spacing: 0.5px; opacity: 0; animation: fadeInOut 5s infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.9); } 50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); } }
+        @keyframes fadeInOut { 0%, 100% { opacity: 0; transform: translateY(10px); } 20%, 80% { opacity: 1; transform: translateY(0); } }
+        body.loaded #preloader { opacity: 0; visibility: hidden; }
+    </style>
+</head>
+<body>
+    <!-- [Premium Preloader] -->
+    <div id="preloader">
+        <div class="loader-content">
+            <div class="loader-ring"></div>
+            <div class="loader-logo">MQnet</div>
+            <div class="loader-text" id="loader-msg">MQnet 시스템을 깨우는 중입니다...</div>
+        </div>
+    </div>
+    {# [매장 관리 카드 컴포넌트 매크로 정의] #}
+    {% macro store_management_card(s, current_role) %}
+    <div class="store-card">
+        <!-- [그룹 1] 장비 앱 가동 -->
+        <h4 style="margin:0 0 10px 0; font-size:0.85rem; color:var(--primary); font-weight:800; border-bottom:1px solid rgba(59,130,246,0.2); padding-bottom:5px;">
+            <i data-lucide="play-circle" size="14"></i> 장비 앱 가동/설치
+        </h4>
+        <div class="action-grid" style="display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; margin-bottom:25px;">
+            <a href="/{{ s.id }}" class="action-item" style="background:rgba(255,255,255,0.03);">
+                <i data-lucide="shopping-bag"></i> <span class="action-label">주문</span>
+            </a>
+            <a href="/{{ s.id }}/counter" class="action-item" style="background:rgba(59,130,246,0.1); border-color:var(--primary);">
+                <i data-lucide="monitor" style="color:var(--primary);"></i> <span class="action-label" style="color:var(--primary);">카운터</span>
+            </a>
+            <a href="/{{ s.id }}/kitchen" class="action-item">
+                <i data-lucide="chef-hat"></i> <span class="action-label">주방</span>
+            </a>
+            <a href="/{{ s.id }}/display" class="action-item" target="_blank">
+                <i data-lucide="tv-2"></i> <span class="action-label">전광판</span>
+            </a>
+            <a href="/{{ s.id }}/qr-print" class="action-item" target="_blank">
+                <i data-lucide="printer"></i> <span class="action-label">QR인쇄</span>
+            </a>
+        </div>
+
+        <!-- [그룹 2] 매장 운영 및 관리 -->
+        <h4 style="margin:0 0 10px 0; font-size:0.85rem; color:var(--accent); font-weight:800; border-bottom:1px solid rgba(16,185,129,0.2); padding-bottom:5px;">
+            <i data-lucide="settings" size="14"></i> 매장 운영 및 관리
+        </h4>
+        <div class="action-grid" style="display:grid; grid-template-columns:repeat(5, 1fr); gap:10px;">
+            <a href="/{{ s.id }}/stats" class="action-item">
+                <i data-lucide="bar-chart-3"></i> <span class="action-label">매출분석</span>
+            </a>
+            <a href="/admin/stores/{{ s.id }}/config" class="action-item" style="border-color:var(--accent); background:rgba(16,185,129,0.05);">
+                <i data-lucide="edit-3" style="color:var(--accent);"></i> <span class="action-label" style="color:var(--accent);">정보수정</span>
+            </a>
+            <a href="/signup?role=worker&store_id={{ s.id }}" class="action-item">
+                <i data-lucide="user-plus"></i> <span class="action-label">직원등록</span>
+            </a>
+            <a href="/admin/staff?slug={{ s.id }}" class="action-item" style="border-color:var(--warning); background:rgba(245,158,11,0.05);">
+                <i data-lucide="clipboard-check" style="color:var(--warning);"></i> <span class="action-label" style="color:var(--warning);">근태/급여</span>
+            </a>
+            {% if current_role in ['admin', 'owner'] %}
+            <button onclick="deleteDemo('{{ s.id }}')" class="action-item" style="color:var(--danger); border-color:var(--danger); background:rgba(239,68,68,0.03); cursor:pointer;">
+                <i data-lucide="trash-2"></i> <span class="action-label">삭제</span>
+            </button>
+            {% endif %}
+        </div>
+        <div class="store-card-footer" style="display: flex; justify-content: flex-end; align-items: center; margin-top: 20px; gap: 15px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
+            <div class="store-meta" style="font-size: 0.95rem; opacity: 0.8; color: var(--primary);">
+                <i data-lucide="info" size="14" style="vertical-align: middle;"></i> 
+                {{ s.name }} ({{ s.id }})
+            </div>
+            <div style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 950; border: 1px solid rgba(16, 185, 129, 0.2);">ACTIVE</div>
+        </div>
+        <!-- [UI UPDATE VERIFIED] -->
+    </div>
+    {% endmacro %}
+
+    <div class="portal-container">
+        {% if not logged_in %}
+            <div style="text-align: center; padding: 60px 0;">
+                <h1 style="font-size: 4rem; font-weight: 1000; margin-bottom: 5px; color: white; letter-spacing: -2px; text-shadow: 0 4px 10px rgba(0,0,0,0.3);">MQnet</h1>
+                <p style="color:var(--mq-green); margin-bottom: 40px; font-size: 1.1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 4px; opacity: 0.9;">Smart Automation Platform</p>
+                <div style="max-width: 400px; margin: 0 auto; background: var(--mq-card); padding: 40px; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); border: 1px solid var(--mq-border);">
+                    {% with messages = get_flashed_messages() %}
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 15px; border-radius: 12px; margin-bottom: 20px; font-size: 0.9rem; font-weight: 700; border: 1px solid rgba(239, 68, 68, 0.2); text-align: center;">
+                                    {{ message }}
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    <form action="{{ url_for('login') }}" method="POST">
+                        <input type="text" name="username" placeholder="매장 ID 또는 계정" required style="width:100%; padding:18px; margin-bottom:15px; border-radius:15px; background: rgba(0,0,0,0.2); border:1px solid var(--mq-border); color:white; box-sizing:border-box; font-size: 1rem;">
+                        <input type="password" name="password" placeholder="비밀번호" required style="width:100%; padding:18px; margin-bottom:25px; border-radius:15px; background: rgba(0,0,0,0.2); border:1px solid var(--mq-border); color:white; box-sizing:border-box; font-size: 1rem;">
+                        <button type="submit" class="mq-btn-primary" style="width:100%; justify-content: center; font-size: 1.2rem; padding: 20px; background: linear-gradient(135deg, var(--mq-green), #059669); border:none;">시스템 시작하기</button>
+                    </form>
+                    <div style="text-align: center; border-top: 1px solid var(--mq-border); padding-top: 20px; margin-top: 20px;">
+                        <p style="color: var(--mq-text-sub); font-size: 0.9rem; margin-bottom: 15px;">아직 계정이 없으신가요?</p>
+                        <a href="/signup" style="color: var(--mq-green); text-decoration: none; font-weight: 800; font-size: 1rem; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <i data-lucide="user-plus" size="18"></i> 파트너 및 근로자 가입하기
+                        </a>
+                    </div>
+                    <div style="margin-top: 30px; font-size: 0.75rem; color: #94a3b8;">
+                        <a href="/terms" style="color: inherit;">이용약관</a> | 
+                        <a href="/privacy" style="color: inherit; font-weight: bold;">개인정보 처리방침</a>
+                        <p style="margin-top: 10px;">&copy; 2026 MQnet Platforms</p>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="top-nav">
+                <div class="user-summary">
+                    <span class="role-badge">{{ session.get('role', 'USER')|upper }}</span>
+                    <span style="font-weight: 950; font-size: 1.5rem;">{{ user.full_name or user.username }}</span>
+                </div>
+                <a href="/logout" style="color:var(--danger); text-decoration:none; font-size:1.1rem; font-weight:950; display: flex; align-items: center; gap: 8px;">
+                    종료 <i data-lucide="log-out" size="22"></i>
+                </a>
+            </div>
+
+            {% if role == 'staff' %}
+            <div style="margin-bottom: 2rem;">
+                <a href="/partner/recruit-qr" class="btn" style="background: var(--primary); color: white; padding: 18px; border-radius: 20px; font-weight: 950; display: block; text-align: center; font-size: 1.2rem; box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);">
+                    <i data-lucide="qr-code" size="24" style="vertical-align: middle; margin-right: 8px;"></i> 신규 가맹점 영업용 QR 열기
+                </a>
+            </div>
+            {% endif %}
+
+            {% if role in ['owner', 'manager'] and user.store_id %}
+                {# 본인 매장의 승인 대기자 (파트너 제외) #}
+                {% set pending_workers = users_pending|selectattr('store_id', 'equalto', user.store_id)|rejectattr('role', 'equalto', 'staff')|list %}
+                
+                {% if pending_workers %}
+                <div class="card" style="border-color: var(--warning); background: rgba(245, 158, 11, 0.05); margin-bottom:20px; padding:20px;">
+                    <h3 style="margin:0 0 15px 0; font-size:1rem; color:var(--warning); font-weight:900;"><i data-lucide="user-check"></i> 가입 승인 대기 ({{ pending_workers|length }})</h3>
+                    <div style="display:grid; gap:10px;">
+                        {% for pw in pending_workers %}
+                        <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:12px; margin-bottom:8px; border: 1px solid var(--border);">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                                <div>
+                                    <span style="font-weight:950; font-size:1.1rem; color:white;">{{ pw.username }}</span> 
+                                    <span style="font-size:0.85rem; color:#94a3b8;">({{ pw.full_name or '성명 미입력' }})</span>
+                                    <div style="font-size:0.75rem; color:var(--primary); font-weight:800; margin-top:3px;">
+                                        <i data-lucide="calendar" size="12"></i> 
+                                        {{ pw.contract_start or '미정' }} ~ {{ pw.contract_end or '미정' }}
+                                    </div>
+                                </div>
+                                <form action="/admin/users/{{ pw.id }}/approve" method="POST">
+                                    <button type="submit" style="background:var(--accent); color:white; border:none; padding:8px 20px; border-radius:10px; font-weight:900; font-size:0.9rem; cursor:pointer; box-shadow:0 5px 15px rgba(16, 185, 129, 0.3);">최종 채용 승인</button>
+                                </form>
+                            </div>
+                            
+                            <div style="padding:10px; background:rgba(0,0,0,0.2); border-radius:10px;">
+                                <p style="font-size:0.7rem; color:#64748b; margin-top:0; margin-bottom:8px; font-weight:700;">[신청 근로 스케줄]</p>
+                                <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                                    {% if pw.work_schedule %}
+                                        {% for d, t in pw.work_schedule.items() %}
+                                        <span style="font-size:0.7rem; color:#fff; background:rgba(255,255,255,0.05); padding:3px 8px; border-radius:5px;">
+                                            {{ {'mon':'월','tue':'화','wed':'수','thu':'목','fri':'금','sat':'토','sun':'일'}[d] }}: {{ t.in }}~{{ t.out }}
+                                        </span>
+                                        {% endfor %}
+                                    {% else %}
+                                        <span style="font-size:0.7rem; color:#64748b;">설정된 스케줄 없음</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            {% endif %}
+
+            {% if role == 'worker' %}
+                <div class="worker-panel">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 25px;">
+                        <div>
+                            <div id="worker-status-tag" class="status-badge status-home">상태 확인 중</div>
+                            <h2 style="margin: 10px 0 0; font-size: 3.5rem; font-weight: 950;" id="worker-clock">00:00:00</h2>
+                            <p id="worker-date" style="color: #64748b; margin: 5px 0; font-weight: 900;">2026.04.07 (화)</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="font-size: 1rem; color: #64748b; font-weight: 950; text-transform: uppercase;">정산 예정</span>
+                            <div id="worker-monthly-wage" style="font-size: 2.5rem; font-weight: 950; color: var(--primary);">0원</div>
+                        </div>
+                    </div>
+                    <div id="worker-active-timer" style="margin-bottom: 25px; display:none; padding: 15px; background: rgba(16,185,129,0.1); border-radius: 15px; color: var(--accent); font-weight: 950; text-align: center; border: 1px solid var(--accent);">
+                        업무 진행 중 (<span id="worker-minutes-count">0</span>분)
+                    </div>
+                    <div id="worker-action-area">
+                        <button id="worker-btn-in" onclick="handleCheckIn()" style="width: 100%; border: none; cursor: pointer; display: none; padding: 35px; border-radius: 20px; background: var(--primary); color: white; font-weight: 950; font-size: 1.8rem;">출근하기</button>
+                        <button id="worker-btn-out" onclick="handleCheckOut()" style="width: 100%; border: none; cursor: pointer; display: none; padding: 35px; border-radius: 20px; background: var(--danger); color: white; font-weight: 950; font-size: 1.8rem;">퇴근하기</button>
+                    </div>
+                </div>
+            {% else %}
+                {% if role in ['admin', 'partner'] %}
+                    <div class="section-header" style="border-left: 6px solid var(--mq-green);">MQnet Regional Infrastructure</div>
+                    <div class="global-grid">
+                        <a href="/admin/performance" class="global-card">
+                            <i data-lucide="bar-chart-2" style="color:var(--primary);"></i> <span>종합 데이터 분석</span>
+                        </a>
+                        <a href="/admin/users" class="global-card">
+                            <i data-lucide="user-cog" style="color:var(--accent);"></i> <span>사용자 권한 관리</span>
+                        </a>
+                        <a href="/admin/billing" class="global-card">
+                            <i data-lucide="mail-check" style="color:var(--warning);"></i> <span>가맹 정산 및 과금</span>
+                        </a>
+                    </div>
+                {% endif %}
+
+                {% set store_list = [] %}
+                {% if store %}{% do store_list.append(store) %}{% endif %}
+                {% if stores %}{% for s in stores %}{% if s not in store_list %}{% do store_list.append(s) %}{% endif %}{% endfor %}{% endif %}
+
+                <div class="section-header" style="margin-top: 40px; margin-bottom: 10px; border-left: 6px solid var(--primary); padding-left: 15px; font-size: 1rem; font-weight: 1000; color: #fff; letter-spacing: 1px;">MANAGED INSTANCES</div>
+
+                {% if store_list|length > 1 %}
+                <div class="store-tabs" style="display: flex; justify-content: flex-start; gap: 8px; margin-top: 10px; margin-bottom: 20px; padding: 5px; background: transparent; border: none;">
+                    {% for s in store_list %}
+                        <button class="store-tab-btn {% if loop.first %}active{% endif %}" 
+                                data-slug="{{ s.id }}"
+                                onclick="switchStoreTab('{{ s.id }}', this)" 
+                                style="padding: 10px 24px; font-size: 0.95rem; font-weight: 800; border-radius: 12px;">
+                            {{ s.name }}
+                        </button>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <div class="store-tab-content">
+                    {% for s in store_list %}
+                        <div id="tab-pane-{{ s.id }}" class="store-pane {% if loop.first %}active{% endif %}">
+                            {{ store_management_card(s, role) }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    {{ render_ai_assistant(session.get('store_id', 'none')) }}
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}?v={{ range(1, 9999) | random }}"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+
+    {% if role == 'worker' %}
+    <script>
+        const socket = io();
+        let checkInTime = null;
+        const slug = "{{ user.store_id }}";
+        const currentUserId = Number('{{ user.id }}');
+
+        socket.on('connect', () => { if(slug) socket.emit('join', { store_id: slug }); });
+        socket.on('attendance_approved', (data) => {
+            if (data.bulk || data.user_id === currentUserId) loadWorkerStatus();
+        });
+
+        function updateWorkerClock() {
+            const now = new Date();
+            const clockEl = document.getElementById('worker-clock');
+            if(clockEl) clockEl.innerText = now.toLocaleTimeString('ko-KR', { hour12: false });
+            
+            const dateEl = document.getElementById('worker-date');
+            if(dateEl) {
+                const options = { year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' };
+                dateEl.innerText = now.toLocaleDateString('ko-KR', options);
+            }
+
+            if (checkInTime) {
+                const diff = Math.floor((new Date() - checkInTime) / 60000);
+                const countEl = document.getElementById('worker-minutes-count');
+                if(countEl) countEl.innerText = diff;
+            }
+        }
+        setInterval(updateWorkerClock, 1000);
+
+        async function loadWorkerStatus() {
+            if(!slug || slug === 'None') return;
+            try {
+                const res = await fetch(`/api/${slug}/attendance/staff-status`);
+                const data = await res.json();
+                const wageEl = document.getElementById('worker-monthly-wage');
+                if(wageEl) wageEl.innerText = (data.current_wage || 0).toLocaleString() + '원';
+                const tag = document.getElementById('worker-status-tag');
+                const activeTimer = document.getElementById('worker-active-timer');
+                const btnIn = document.getElementById('worker-btn-in');
+                const btnOut = document.getElementById('worker-btn-out');
+
+                if (data.status === 'working') {
+                    checkInTime = new Date(data.check_in_at);
+                    tag.innerText = '업무 중'; tag.className = 'status-badge status-working';
+                    btnIn.style.display = 'none'; btnOut.style.display = 'block';
+                    activeTimer.style.display = 'block';
+                } else {
+                    checkInTime = null;
+                    tag.innerText = '업무 대기'; tag.className = 'status-badge status-home';
+                    btnIn.style.display = 'block'; btnOut.style.display = 'none';
+                    activeTimer.style.display = 'none';
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function handleCheckIn() { await workerCheckIn(slug); loadWorkerStatus(); }
+        async function handleCheckOut() { await workerCheckOut(slug); loadWorkerStatus(); }
+
+        loadWorkerStatus(); updateWorkerClock();
+    </script>
+    {% endif %}
+
+    <!-- [수정] 시작부터 함께하는 AI 비서 UI (파란색 플로팅 이동형) -->
+    <div id="admin-voice-toast" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#3b82f6; color:white; padding:12px 25px; border-radius:30px; font-weight:700; z-index:100000; box-shadow:0 10px 30px rgba(0,0,0,0.5); font-size:0.9rem;"></div>
+    
+    <style>
+        @keyframes mic-pulse {
+            0% { transform: scale(1); box-shadow: 0 10px 30px rgba(59,130,246,0.6); }
+            50% { transform: scale(1.1); box-shadow: 0 15px 45px rgba(239,68,68,0.8); }
+            100% { transform: scale(1); box-shadow: 0 10px 30px rgba(59,130,246,0.6); }
+        }
+        #admin-mic-btn.listening {
+            animation: mic-pulse 1.5s infinite ease-in-out;
+            background: #ef4444 !important;
+            border-color: #f87171 !important;
+        }
+    </style>
+    <div id="admin-mic-btn" onmousedown="startDrag(event)" ontouchstart="startDrag(event)" style="position:fixed; bottom:30px; right:30px; width:65px; height:65px; background:#3b82f6; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:99999; box-shadow:0 10px 30px rgba(59,130,246,0.6); border:2px solid rgba(255,255,255,0.2); transition:0.3s;">
+        <i data-lucide="mic" size="28"></i>
+        <div id="live-caption" style="display:none; position:absolute; bottom:80px; right:0; white-space:nowrap; background:rgba(15,23,42,0.95); color:#fff; padding:8px 16px; border-radius:15px; font-size:0.85rem; font-weight:700; backdrop-filter:blur(10px); border:1px solid #3b82f6; pointer-events:none; box-shadow:0 10px 20px rgba(0,0,0,0.3);"></div>
+    </div>
+
+    <script>
+        // [추가] 드래그 이동 및 보이스 로직
+        let isDragging = false;
+        let startX, startY, initialX, initialY;
+        function startDrag(e) {
+            isDragging = false;
+            const el = document.getElementById('admin-mic-btn');
+            const touch = e.type === 'touchstart' ? e.touches[0] : e;
+            startX = touch.clientX; startY = touch.clientY;
+            initialX = el.offsetLeft; initialY = el.offsetTop;
+            document.onmousemove = document.ontouchmove = doDrag;
+            document.onmouseup = document.ontouchend = endDrag;
+        }
+        function doDrag(e) {
+            const touch = e.type === 'touchmove' ? e.touches[0] : e;
+            const dx = touch.clientX - startX; const dy = touch.clientY - startY;
+            if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                isDragging = true;
+                const el = document.getElementById('admin-mic-btn');
+                el.style.left = (initialX + dx) + 'px'; el.style.top = (initialY + dy) + 'px';
+                el.style.right = 'auto'; el.style.bottom = 'auto';
+            }
+        }
+        function endDrag() {
+            document.onmousemove = document.ontouchmove = null;
+            document.onmouseup = document.ontouchend = null;
+            if(!isDragging) toggleAdminVoice();
+        }
+
+        function getVisibleInfo() {
+            let info = "";
+            // 1. 활성 탭/버튼 (매장 ID 포함)
+            const actives = document.querySelectorAll('.store-tab-btn.active, .active, .selected');
+            actives.forEach(el => {
+                const name = el.innerText.trim().split('\n')[0];
+                const slug = el.getAttribute('data-slug') || "";
+                if (name) info += `[선택됨: ${name}${slug ? ' (ID: ' + slug + ')' : ''}] `;
+            });
+
+            // 2. 체크박스 상태 (관리 옵션 등)
+            const checks = document.querySelectorAll('input[type="checkbox"]');
+            checks.forEach(c => {
+                const label = c.closest('label')?.innerText.trim() || c.nextElementSibling?.innerText.trim() || "항목";
+                info += `[체크: ${label}=${c.checked ? 'ON' : 'OFF'}] `;
+            });
+
+            // 3. 선택된 드롭다운
+            const selects = document.querySelectorAll('select');
+            selects.forEach(s => {
+                const label = s.previousElementSibling?.innerText.trim() || "선택";
+                info += `[선택값: ${label}=${s.options[s.selectedIndex]?.text}] `;
+            });
+            
+            const content = document.querySelector('.portal-container') || document.body;
+            info += "\n" + content.innerText.replace(/\s+/g, ' ').substring(0, 800);
+            return info;
+        }
+
+        // [보강] AI 음성 합성(TTS) 로직
+        function speakResponse(text) {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            const uttr = new SpeechSynthesisUtterance(text);
+            uttr.lang = 'ko-KR'; uttr.rate = 0.9; uttr.pitch = 1.1;
+            const setVoice = () => {
+                const voices = window.speechSynthesis.getVoices();
+                const femaleVoice = voices.find(v => v.lang === 'ko-KR' && (v.name.includes('Google') || v.name.includes('Female') || v.name.includes('Heami') || v.name.includes('Yuna')));
+                if (femaleVoice) uttr.voice = femaleVoice;
+                window.speechSynthesis.speak(uttr);
+            };
+            if (window.speechSynthesis.getVoices().length > 0) setVoice();
+            else window.speechSynthesis.onvoiceschanged = setVoice;
+        }
+
+        let adminRec;
+        function toggleAdminVoice() {
+            const btn = document.getElementById('admin-mic-btn');
+            const caption = document.getElementById('live-caption');
+            if(btn.classList.contains('listening')) { if(adminRec) adminRec.stop(); return; }
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if(!SR) return;
+            adminRec = new SR(); adminRec.lang = 'ko-KR';
+            adminRec.interimResults = true;
+
+            adminRec.onstart = () => { 
+                window.speechSynthesis.cancel();
+                btn.style.background = '#ef4444'; btn.classList.add('listening'); caption.style.display = 'block'; caption.innerText = "듣고 있어요..."; 
+            };
+            adminRec.onend = () => { btn.style.background = '#3b82f6'; btn.classList.remove('listening'); setTimeout(() => { caption.style.display = 'none'; }, 2000); };
+            
+            adminRec.onresult = (e) => {
+                const toast = document.getElementById('admin-voice-toast');
+                let interim = "";
+                for (let i = e.resultIndex; i < e.results.length; ++i) {
+                    if (e.results[i].isFinal) {
+                        const transcript = e.results[i][0].transcript;
+                        toast.style.display = 'block'; toast.innerText = `🎙️ "${transcript}" 처리 중...`;
+                        
+                        fetch(`/api/general/management-order`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ message: transcript, visible_info: getVisibleInfo() })
+                        })
+                        .then(r => r.json()).then(data => {
+                            toast.innerText = `🤖 ${data.reply}`;
+                            speakResponse(data.reply);
+                            
+                            if (data.action && data.action.type === 'navigate' && data.action.url) {
+                                toast.innerText = `🔄 [${data.action.url}] 이동 중... \n${data.reply}`;
+                                // 이동 전 주소를 충분히 보실 수 있게 3초 대기합니다.
+                                setTimeout(() => { window.location.href = data.action.url; }, 3000);
+                            } else {
+                                // 메시지를 충분히 읽을 수 있게 7초간 유지합니다.
+                                setTimeout(() => { toast.style.display = 'none'; }, 7000);
+                            }
+                        })
+                        .catch(err => {
+                            toast.innerText = "⚠️ 통신 실패: 서버 연결을 확인해 주세요.";
+                            speakResponse("통신에 실패했습니다. 서버가 켜져 있는지 확인해 주세요.");
+                            setTimeout(() => { toast.style.display = 'none'; }, 3000);
+                        });
+                    } else {
+                        interim += e.results[i][0].transcript;
+                    }
+                }
+                if(interim) caption.innerText = interim;
+            };
+            adminRec.start();
+        }
+        window.speechSynthesis.getVoices();
+
+        // [Preloader Logic]
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                document.body.classList.add('loaded');
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

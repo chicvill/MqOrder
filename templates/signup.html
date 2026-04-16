@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQnet Central | 직원 신규 가입</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        :root {
+            --primary: #3b82f6; --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --border: #334155;
+        }
+        body { background: var(--bg); color: var(--text); font-family: 'Pretendard', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .signup-card { background: var(--card); border: 1px solid var(--border); border-radius: 24px; padding: 2.5rem; width: 420px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+        .logo { font-size: 1.8rem; font-weight: 900; text-align: center; margin-bottom: 2rem; background: linear-gradient(135deg, #3b82f6, #10b981); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .form-group { margin-bottom: 1.5rem; }
+        label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; color: #94a3b8; }
+        input[type="text"], input[type="password"] { width: 100%; background: #0f172a; border: 1px solid var(--border); border-radius: 12px; padding: 12px 15px; color: white; font-size: 1rem; box-sizing: border-box; }
+        
+        /* 약관 동의 영역 */
+        .agreement-box { background: #0f172a; border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 1.5rem; font-size: 0.85rem; line-height: 1.6; }
+        .agreement-item { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; cursor: pointer; }
+        .agreement-item:last-child { margin-bottom: 0; }
+        .agreement-item input { margin-top: 4px; width: 18px; height: 18px; }
+        .important-text { color: #3b82f6; font-weight: 700; }
+
+        .btn-signup { width: 100%; background: var(--primary); color: white; border: none; border-radius: 12px; padding: 14px; font-weight: 800; font-size: 1rem; cursor: pointer; transition: 0.2s; margin-top: 10px; }
+        .btn-signup:hover { background: #2563eb; transform: translateY(-2px); }
+        .flash { background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 12px; border-radius: 10px; font-size: 0.85rem; text-align: center; margin-bottom: 1.5rem; border: 1px solid rgba(239, 68, 68, 0.2); }
+    </style>
+</head>
+<body>
+    <div class="signup-card">
+        <div class="logo">MQnet Central Hub</div>
+        <h3 style="text-align:center; margin-top:0; margin-bottom:1.5rem; font-weight:800;" id="form-title">가입 유형을 선택하세요</h3>
+
+        <!-- 역할 선택 카드 -->
+        <div id="role-selector" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:1.5rem;">
+            <div class="role-card" onclick="selectRole('owner', '매장 점주', '🏪')" data-role="owner"
+                style="background:#0f172a; border:2px solid #334155; border-radius:14px; padding:18px; text-align:center; cursor:pointer; transition:0.2s;">
+                <div style="font-size:2rem;">🏪</div>
+                <div style="font-weight:800; margin:6px 0 4px; font-size:0.95rem;">매장 점주</div>
+                <div style="font-size:0.72rem; color:#64748b;">Owner</div>
+            </div>
+            <div class="role-card" onclick="selectRole('manager', '점장', '👔')" data-role="manager"
+                style="background:#0f172a; border:2px solid #334155; border-radius:14px; padding:18px; text-align:center; cursor:pointer; transition:0.2s;">
+                <div style="font-size:2rem;">👔</div>
+                <div style="font-weight:800; margin:6px 0 4px; font-size:0.95rem;">점장</div>
+                <div style="font-size:0.72rem; color:#64748b;">Manager</div>
+            </div>
+            <div class="role-card" onclick="selectRole('worker', '현장 근로자', '👷')" data-role="worker"
+                style="background:#0f172a; border:2px solid #334155; border-radius:14px; padding:18px; text-align:center; cursor:pointer; transition:0.2s;">
+                <div style="font-size:2rem;">👷</div>
+                <div style="font-weight:800; margin:6px 0 4px; font-size:0.95rem;">현장 근로자</div>
+                <div style="font-size:0.72rem; color:#64748b;">Worker</div>
+            </div>
+            <div class="role-card" onclick="selectRole('staff', '제휴 파트너', '🤝')" data-role="staff"
+                style="background:#0f172a; border:2px solid #334155; border-radius:14px; padding:18px; text-align:center; cursor:pointer; transition:0.2s;">
+                <div style="font-size:2rem;">🤝</div>
+                <div style="font-weight:800; margin:6px 0 4px; font-size:0.95rem;">제휴 파트너</div>
+                <div style="font-size:0.72rem; color:#64748b;">Partner (Staff)</div>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="flash">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form action="/signup" method="POST" id="signup-form" style="display:none;">
+            <input type="hidden" name="role" id="selected-role" value="">
+            <input type="hidden" name="store_id" id="prefilled-store" value="">
+            <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); padding: 15px; border-radius: 12px; margin-bottom: 1.5rem; font-size: 0.85rem; color: #94a3b8; line-height: 1.6;">
+                <span id="role-notice"></span>
+            </div>
+
+            <div class="form-group">
+                <label>이름 (실명)</label>
+                <input type="text" name="full_name" placeholder="실명을 입력해 주세요" required>
+            </div>
+            <div class="form-group">
+                <label>전화번호</label>
+                <input type="text" name="phone" placeholder="010-0000-0000" required>
+            </div>
+            <div class="form-group">
+                <label>로그인 ID</label>
+                <input type="text" name="username" placeholder="사용할 아이디 입력" required>
+            </div>
+            <div class="form-group">
+                <label>비밀번호</label>
+                <input type="password" name="password" placeholder="비밀번호 입력" required>
+            </div>
+            <div class="form-group">
+                <label>비밀번호 확인</label>
+                <input type="password" name="confirm_password" placeholder="다시 한번 입력" required>
+            </div>
+
+            <!-- [추가] 매장 선택 섹션 (매장 소속 권한 시 노출) -->
+            <div id="store-selection-group" class="form-group" style="display:none;">
+                <label>소속 매장 선택</label>
+                <select name="store_id" id="store-select" style="width: 100%; background: #0f172a; border: 1px solid var(--border); border-radius: 12px; padding: 12px 15px; color: white; font-size: 1rem; box-sizing: border-box; cursor:pointer;">
+                    <option value="">-- 매장을 선택해 주세요 --</option>
+                    {% for store in stores %}
+                    <option value="{{ store.id }}">{{ store.name }} ({{ store.id }})</option>
+                    {% endfor %}
+                </select>
+                <p style="font-size:0.75rem; color:#64748b; margin-top:6px;">* 본인의 소속 매장을 정확히 선택해 주세요.</p>
+            </div>
+
+            <!-- [근로자 전용] 계약 기간 및 스케줄 설정 섹션 -->
+            <div id="worker-schedule-section" style="display:none; border-top: 2px solid var(--primary); padding-top: 1.5rem; margin-top: 1.5rem;">
+                <h4 style="margin:0 0 1rem; font-size:0.95rem; color:var(--primary); font-weight:800;"><i data-lucide="clock" size="16"></i> 계약 및 희망 근로 스케줄</h4>
+                
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px;">
+                    <div class="form-group">
+                        <label>근로 시작일</label>
+                        <input type="date" name="contract_start" id="contract_start" style="width: 100%; border-radius: 12px; padding: 10px; background: #0f172a; border: 1px solid var(--border); color:#fff;">
+                    </div>
+                    <div class="form-group">
+                        <label>계약 종료일</label>
+                        <input type="date" name="contract_end" id="contract_end" style="width: 100%; border-radius: 12px; padding: 10px; background: #0f172a; border: 1px solid var(--border); color:#fff;">
+                    </div>
+                </div>
+
+                <div style="display:grid; gap:8px;">
+                    <label style="font-size:0.8rem; margin-bottom:4px; display:block;">요일별 근무 시간 (예: 09:00 - 18:00)</label>
+                    {% for day in [('mon','월'),('tue','화'),('wed','수'),('thu','목'),('fri','금'),('sat','토'),('sun','일')] %}
+                    <div style="display:grid; grid-template-columns: 20px 1fr 1fr; gap:8px; align-items:center;">
+                        <span style="font-size:0.75rem; font-weight:700;">{{ day[1] }}</span>
+                        <input type="time" name="sched_{{ day[0] }}_in" style="background:#0f172a; border:1px solid var(--border); border-radius:8px; padding:6px; color:#fff; font-size:0.8rem;">
+                        <input type="time" name="sched_{{ day[0] }}_out" style="background:#0f172a; border:1px solid var(--border); border-radius:8px; padding:6px; color:#fff; font-size:0.8rem;">
+                    </div>
+                    {% endfor %}
+                    <p style="font-size:0.7rem; color:#64748b; margin-top:5px;">* 시간은 24시간 형식으로 입력해 주세요. 공란은 휴무로 간주됩니다.</p>
+                </div>
+            </div>
+
+            <div class="agreement-box" style="margin-top:1.5rem;">
+                <label class="agreement-item">
+                    <input type="checkbox" name="agree_labor" id="agree_labor" required>
+                    <span><strong>근로기준법 준수</strong> 공지 사항에 <span class="important-text">동의합니다</span>.</span>
+                </label>
+                <div id="labor-terms" style="font-size:0.7rem; color:#64748b; padding-left:28px; margin-bottom:10px; display:none;">
+                    • 법정 근로시간 및 휴게규정을 준수합니다.<br>
+                    • 주휴수당 및 연장근로수당은 시급에 따라 정산됩니다.<br>
+                    • 근로계약 효력은 관리자 승인 시점부터 발생합니다.
+                </div>
+                <label class="agreement-item">
+                    <input type="checkbox" name="agree_profit" required>
+                    <span>본 서비스의 이용 규정에 <span class="important-text">동의합니다</span>.</span>
+                </label>
+                <label class="agreement-item">
+                    <input type="checkbox" name="agree_age" required>
+                    <span>본인은 <span class="important-text">만 18세 이상의 성인</span>임을 확인합니다.</span>
+                </label>
+                <label class="agreement-item">
+                    <input type="checkbox" name="agree_privacy" required>
+                    <span><span class="important-text">개인정보 수집 및 제공</span>에 동의합니다.</span>
+                </label>
+                <label class="agreement-item">
+                    <input type="checkbox" name="agree_not_robot" required>
+                    <span>본인은 <span class="important-text">로봇이 아니며</span> 직접 가입을 진행하고 있습니다.</span>
+                </label>
+            </div>
+
+            <button type="submit" class="btn-signup" id="submit-btn">가입 신청하기</button>
+            <button type="button" onclick="resetRole()" style="width:100%; background:transparent; color:#94a3b8; border:1px solid #334155; border-radius:12px; padding:12px; font-size:0.85rem; cursor:pointer; margin-top:10px;">← 유형 다시 선택</button>
+            <a href="/login" style="display:block; text-align:center; margin-top:15px; color:#94a3b8; text-decoration:none; font-size:0.85rem;">이미 계정이 있으신가요? 로그인</a>
+        </form>
+
+        <div id="login-hint" style="text-align:center; margin-top:20px;">
+            <a href="/login" style="color:#94a3b8; text-decoration:none; font-size:0.85rem;">이미 계정이 있으신가요? 로그인 →</a>
+        </div>
+    </div>
+    <script>lucide.createIcons();
+
+    const roleNotices = {
+        'owner':   '🏪 <b>매장 점주</b>: 매장을 직접 운영하는 점주 계정입니다. 승인 후 카운터·주방 관리가 가능합니다.',
+        'manager': '👔 <b>점장</b>: 매장 운영을 보조하는 점장 계정입니다. 승인 후 출퇴근 및 직원 관리가 가능합니다.',
+        'worker':  '👷 <b>현장 근로자</b>: QR 출퇴근과 급여 확인이 가능한 계정입니다. 관리자 승인 후 배정됩니다.',
+        'staff':   '🤝 <b>제휴 파트너</b>: 가맹점 영업 및 수당 정산이 가능한 파트너 계정입니다.'
+    };
+
+    function selectRole(role, label, emoji) {
+        document.getElementById('selected-role').value = role;
+        document.getElementById('form-title').innerText = emoji + ' ' + label + ' 가입 신청';
+        document.getElementById('role-notice').innerHTML = roleNotices[role];
+        document.getElementById('submit-btn').innerText = label + ' 가입 신청하기';
+        document.getElementById('role-selector').style.display = 'none';
+        document.getElementById('signup-form').style.display = 'block';
+        document.getElementById('login-hint').style.display = 'none';
+
+        // 근로자 섹션 노출 여부
+        const workerSec = document.getElementById('worker-schedule-section');
+        const laborTerms = document.getElementById('labor-terms');
+        const laborCheck = document.getElementById('agree_labor');
+        
+        // 매장 선택 섹션 노출 여부 (Staff/Admin 제외)
+        const storeGroup = document.getElementById('store-selection-group');
+        const storeSelect = document.getElementById('store-select');
+        
+        if (['owner', 'manager', 'worker'].includes(role)) {
+            storeGroup.style.display = 'block';
+            storeSelect.required = true;
+        } else {
+            storeGroup.style.display = 'none';
+            storeSelect.required = false;
+        }
+
+        if (role === 'worker') {
+            workerSec.style.display = 'block';
+            laborTerms.style.display = 'block';
+            laborCheck.required = true;
+        } else {
+            workerSec.style.display = 'none';
+            laborTerms.style.display = 'none';
+            laborCheck.required = false;
+        }
+
+        // 선택한 카드 강조
+        document.querySelectorAll('.role-card').forEach(c => c.style.borderColor = '#334155');
+        const selectedCard = document.querySelector(`[data-role="${role}"]`);
+        if(selectedCard) selectedCard.style.borderColor = '#3b82f6';
+    }
+
+    function resetRole() {
+        document.getElementById('form-title').innerText = '가입 유형을 선택하세요';
+        document.getElementById('role-selector').style.display = 'grid';
+        document.getElementById('signup-form').style.display = 'none';
+        document.getElementById('login-hint').style.display = 'block';
+    }
+    // [신규] URL 파라미터를 통해 가입 프로세스 자동화 (예: 직원 등록 버튼)
+    window.onload = () => {
+        const params = new URLSearchParams(window.location.search);
+        const urlRole = params.get('role');
+        const urlStoreId = params.get('store_id');
+
+        if (urlRole && roleNotices[urlRole]) {
+            const labels = {'owner':'매장 점주','manager':'점장','worker':'현장 근로자','staff':'제휴 파트너'};
+            const emojis = {'owner':'🏪','manager':'👔','worker':'👷','staff':'🤝'};
+            selectRole(urlRole, labels[urlRole], emojis[urlRole]);
+        }
+        if (urlStoreId) {
+            document.getElementById('store-select').value = urlStoreId;
+            // 안내 문구에 업소 코드 명시
+            document.getElementById('role-notice').innerHTML += `<br>🔗 <b>연결 시도 중인 업소 ID:</b> <span style="color:white;">${urlStoreId}</span>`;
+        }
+    };
+    </script>
+</body>
+</html>

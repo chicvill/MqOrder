@@ -1,0 +1,103 @@
+{% extends "admin/base.html" %}
+{% block title %}내 정보 수정 | MQnet{% endblock %}
+
+{% block extra_style %}
+<style>
+    .profile-card { max-width: 600px; margin: 0 auto; }
+    .form-section { border-bottom: 1px solid var(--border); padding-bottom: 2rem; margin-bottom: 2rem; }
+    .form-section:last-child { border-bottom: none; }
+    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; background: rgba(59, 130, 246, 0.1); color: var(--primary); margin-bottom: 1rem; }
+    .input-label { display: block; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-dim); font-weight: 600; }
+    .input-readonly { background: #1e293b !important; border-color: transparent !important; color: #64748b !important; cursor: not-allowed; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1><i data-lucide="user-settings" size="28" style="vertical-align: middle; margin-right: 10px;"></i> 내 정보 수정</h1>
+</div>
+
+<div class="profile-card admin-card">
+    <div class="form-section">
+        <div class="status-badge">{{ user.role.upper() }} 계정</div>
+        <p style="margin: 0; color: var(--text-dim); font-size: 0.9rem;">아이디: <strong style="color: white;">{{ user.username }}</strong></p>
+    </div>
+
+    <!-- 🏷️ 1단계: 기본 정보 수정 (이름, 연락처) -->
+    <div class="form-section">
+        <h3 style="margin-top: 0; margin-bottom: 1.5rem; font-size: 1.1rem; color: var(--primary);">기본 인적 사항</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div>
+                <label class="input-label">실명</label>
+                <input type="text" id="full-name" value="{{ user.full_name or '' }}" placeholder="성함을 입력하세요">
+            </div>
+            <div>
+                <label class="input-label">연락처</label>
+                <input type="text" id="phone" value="{{ user.phone or '' }}" placeholder="010-0000-0000">
+            </div>
+        </div>
+    </div>
+
+    <!-- 🔐 2단계: 비밀번호 변경 -->
+    <div class="form-section">
+        <h3 style="margin-top: 0; margin-bottom: 1.5rem; font-size: 1.1rem; color: var(--warning);">비밀번호 보안 설정</h3>
+        <div>
+            <label class="input-label">새 비밀번호 (변경 시에만 입력)</label>
+            <input type="password" id="new-password" placeholder="새로운 비밀번호">
+            <p style="font-size: 0.75rem; color: var(--text-dim); margin-top: 5px;">현재 비밀번호와 다르게 설정해 주세요.</p>
+        </div>
+    </div>
+
+    <!-- 🛡️ 3단계: 본인 확인 (필수) -->
+    <div class="form-section" style="background: rgba(59, 130, 246, 0.05); padding: 20px; border-radius: 12px; border: 1px dashed var(--primary);">
+        <h3 style="margin-top: 0; margin-bottom: 1rem; font-size: 1rem; color: white;"><i data-lucide="shield-check" size="18"></i> 본인 확인 절차</h3>
+        <label class="input-label" style="color: var(--primary);">현재 비밀번호</label>
+        <input type="password" id="current-password" placeholder="현재 비밀번호를 입력하여 저장을 승인하세요" style="border-width: 2px;">
+    </div>
+
+    <div style="margin-top: 2rem; display: flex; gap: 15px;">
+        <button onclick="updateProfile()" style="flex: 2; background: var(--primary); color: white; border: none; padding: 16px; border-radius: 12px; font-weight: 800; cursor: pointer;">
+            보안 설정 저장하기
+        </button>
+        <button onclick="history.back()" style="flex: 1; background: var(--sidebar); color: var(--text-dim); border: 1px solid var(--border); padding: 16px; border-radius: 12px; font-weight: 700; cursor: pointer;">
+            취소
+        </button>
+    </div>
+</div>
+
+<script>
+async function updateProfile() {
+    const current_pw = document.getElementById('current-password').value;
+    if (!current_pw) {
+        alert("🛡️ 보안 승인을 위해 현재 비밀번호를 입력해 주세요.");
+        return;
+    }
+
+    const payload = {
+        full_name: document.getElementById('full-name').value,
+        phone: document.getElementById('phone').value,
+        new_password: document.getElementById('new-password').value,
+        current_password: current_pw
+    };
+
+    try {
+        const res = await fetch('/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json();
+        
+        if (data.status === 'success') {
+            alert("✅ 개인정보가 안전하게 저장되었습니다.");
+            location.reload();
+        } else {
+            alert("❌ 오류: " + data.message);
+        }
+    } catch (e) {
+        alert("네트워크 통신 중 오류가 발생했습니다.");
+    }
+}
+</script>
+{% endblock %}

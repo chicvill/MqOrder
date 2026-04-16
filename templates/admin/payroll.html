@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>급여 정산 및 송금 - MQnet Admin</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .payroll-card {
+            background: var(--bg-glass);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1.2rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .staff-info .name { font-size: 1.1rem; font-weight: 800; margin-bottom: 4px; }
+        .staff-info .bank { font-size: 0.82rem; color: var(--text-dim); }
+        
+        .wage-info { text-align: right; }
+        .wage-info .amount { font-size: 1.2rem; font-weight: 900; color: var(--accent); margin-bottom: 8px; }
+        
+        .send-btn {
+            background: #00f2ff;
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            font-weight: 800;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: transform 0.2s;
+        }
+        .send-btn:active { transform: scale(0.95); }
+        .send-btn i { font-size: 0.9rem; }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+<div class="app-shell">
+    <header class="app-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+            <a href="javascript:history.back()" style="color:var(--text);"><i class="fa-solid fa-chevron-left"></i></a>
+            <span class="app-logo" style="font-size:1.2rem;">급여 정산</span>
+        </div>
+    </header>
+
+    <div class="page-content">
+        <div class="section-label">이번 달 급여 지급 대상</div>
+        
+        {% if staff_list %}
+            {% for staff in staff_list %}
+            <div class="payroll-card">
+                <div class="staff-info">
+                    <div class="name">{{ staff.full_name }}</div>
+                    <div class="bank">
+                        {% if staff.bank_name %}
+                            {{ staff.bank_name }} {{ staff.account_no }}
+                        {% else %}
+                            <span style="color:var(--danger);">계좌 정보 없음</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="wage-info">
+                    <div class="amount">{{ staff.current_wage | format_currency }}</div>
+                    {% if staff.bank_name and staff.account_no and staff.current_wage > 0 %}
+                        <a href="#" 
+                           class="send-btn"
+                           onclick="openToss('{{ staff.bank_name }}', '{{ staff.account_no }}', {{ staff.current_wage }})">
+                            <i class="fa-solid fa-paper-plane"></i> 토스 송금
+                        </a>
+                    {% else %}
+                        <button class="send-btn" style="background:#333; color:#666;" disabled>송금 불가</button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <i class="fa-solid fa-users-slash" style="font-size:3rem; opacity:0.2; margin-bottom:1rem;"></i>
+                <p>이번 달 근무 내역이 있는 직원이 없습니다.</p>
+            </div>
+        {% endif %}
+
+        <div class="guide-box" style="margin-top:20px; font-size:0.8rem; background:rgba(255,255,255,0.03); padding:15px; border-radius:12px; color:var(--text-dim);">
+            <i class="fa-solid fa-circle-info" style="margin-right:5px;"></i> <b>송금 안내</b><br>
+            토스 송금 버튼은 모바일 기기에 토스 앱이 설치되어 있어야 작동합니다. 클릭 시 받는 사람, 계좌번호, 금액이 자동으로 입력됩니다.
+        </div>
+    </div>
+</div>
+
+<script>
+    const BANK_CODES = {
+        '국민': '004', '신한': '088', '우리': '020', '하나': '081',
+        '농협': '011', '기업': '003', '카카오': '090', '토스': '092',
+        '케이': '089', '제주': '035', '부산': '032', '수협': '007'
+    };
+
+    function openToss(bankName, account, amount) {
+        let bankCode = '';
+        for (let key in BANK_CODES) {
+            if (bankName.includes(key)) {
+                bankCode = BANK_CODES[key];
+                break;
+            }
+        }
+        // 코드를 못 찾으면 원본 이름 사용 (토스 앱이 어느 정도 매칭 시도함)
+        const finalBank = bankCode || bankName;
+        const memo = encodeURIComponent('{{ store.name }} 급여');
+        const url = `supertoss://send?bank=${finalBank}&account=${account}&amount=${amount}&memo=${memo}`;
+        
+        window.location.href = url;
+    }
+</script>
+</body>
+</html>

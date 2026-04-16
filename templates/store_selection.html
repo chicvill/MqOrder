@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>MQnet Portal | Cloud Instances</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .portal-header { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.1); padding: 1.5rem 2rem; position: sticky; top: 0; z-index: 1000; }
+        .store-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; padding: 2rem; max-width: 1400px; margin: 0 auto; }
+        .store-card { background: #1e293b; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); padding: 1.5rem; transition: 0.3s; text-decoration: none; color: inherit; display: block; position: relative; overflow: hidden; }
+        .store-card:hover { transform: translateY(-5px); border-color: #3b82f6; box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+        .status-badge { position: absolute; top: 1.5rem; right: 1.5rem; padding: 4px 10px; border-radius: 8px; font-size: 0.7rem; font-weight: 800; background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+    </style>
+</head>
+<body style="background: #0f172a; color: #f1f5f9; margin: 0; font-family: 'Pretendard', sans-serif;">
+    <div class="portal-header">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1 style="margin: 0; font-size: 1.5rem; font-weight: 900; letter-spacing: -1px;">MQnet <span style="color: #3b82f6;">Cloud Portal</span></h1>
+                <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600; margin-top: 4px;">Connected to Central Node: {{ now.year }}-{{ now.month }}-{{ now.day }}</div>
+            </div>
+            <a href="/logout" style="color: #ef4444; text-decoration: none; font-weight: 800; font-size: 0.9rem;">LOGOUT</a>
+        </div>
+    </div>
+
+    <div class="store-grid">
+        {% for store in stores %}
+        <a href="/admin/stores/{{ store.id }}/config" class="store-card">
+            <div class="status-badge">ACTIVE</div>
+            <div style="width: 45px; height: 45px; background: rgba(59, 130, 246, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; color: #3b82f6;">
+                <i data-lucide="store"></i>
+            </div>
+            <div style="font-size: 1.1rem; font-weight: 800; margin-bottom: 4px;">{{ store.name }}</div>
+            <div style="font-size: 0.8rem; color: #94a3b8; font-family: monospace;">INSTANCE_{{ store.id }}</div>
+            
+            <div style="margin-top: 1.5rem; display: flex; gap: 8px; flex-wrap: wrap;">
+                <div title="Counter" style="padding: 6px; background: rgba(255,255,255,0.03); border-radius: 8px;"><i data-lucide="monitor" size="14"></i></div>
+                <div title="Kitchen" style="padding: 6px; background: rgba(255,255,255,0.03); border-radius: 8px;"><i data-lucide="chef-hat" size="14"></i></div>
+                <div title="Sales" style="padding: 6px; background: rgba(255,255,255,0.03); border-radius: 8px;"><i data-lucide="bar-chart-2" size="14"></i></div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- [수정] 보이스 매니저 UI (파란색 플로팅 이동형) -->
+    <div id="admin-voice-toast" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#3b82f6; color:#fff; padding:12px 25px; border-radius:30px; font-weight:700; z-index:9001; box-shadow:0 10px 30px rgba(0,0,0,0.5); font-size:0.9rem;"></div>
+    
+    <div id="admin-mic-btn" onmousedown="startDrag(event)" ontouchstart="startDrag(event)" style="position:fixed; bottom:30px; right:30px; width:65px; height:65px; background:#3b82f6; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:9000; box-shadow:0 10px 25px rgba(59,130,246,0.4); border:none; transition:0.3s;">
+        <i data-lucide="mic"></i>
+        <!-- [추가] 마이크 버튼에 밀착된 플로팅 라벨 -->
+        <div id="live-caption" style="display:none; position:absolute; bottom:80px; right:0; white-space:nowrap; background:rgba(15,23,42,0.95); color:#fff; padding:8px 16px; border-radius:15px; font-size:0.85rem; font-weight:700; backdrop-filter:blur(10px); border:1px solid #3b82f6; pointer-events:none; box-shadow:0 10px 20px rgba(0,0,0,0.3);"></div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // [추가] 드래그 이동 로직
+        let isDragging = false;
+        let startX, startY, initialX, initialY;
+        function startDrag(e) {
+            isDragging = false;
+            const el = document.getElementById('admin-mic-btn');
+            const touch = e.type === 'touchstart' ? e.touches[0] : e;
+            startX = touch.clientX; startY = touch.clientY;
+            initialX = el.offsetLeft; initialY = el.offsetTop;
+            document.onmousemove = document.ontouchmove = doDrag;
+            document.onmouseup = document.ontouchend = endDrag;
+        }
+        function doDrag(e) {
+            isDragging = true;
+            const el = document.getElementById('admin-mic-btn');
+            const touch = e.type === 'touchmove' ? e.touches[0] : e;
+            const dx = touch.clientX - startX; const dy = touch.clientY - startY;
+            el.style.left = (initialX + dx) + 'px'; el.style.top = (initialY + dy) + 'px';
+            el.style.right = 'auto'; el.style.bottom = 'auto';
+        }
+        function endDrag() {
+            document.onmousemove = document.ontouchmove = null;
+            document.onmouseup = document.ontouchend = null;
+            if(!isDragging) toggleAdminVoice();
+        }
+
+        function getVisibleInfo() {
+            const content = document.querySelector('.store-grid') || document.body;
+            return content.innerText.replace(/\s+/g, ' ').substring(0, 700);
+        }
+
+        // [추가] AI 음성 합성(TTS) 로직
+        function speakResponse(text) {
+            if (!window.speechSynthesis) return;
+            const uttr = new SpeechSynthesisUtterance(text);
+            uttr.lang = 'ko-KR';
+            uttr.rate = 0.9;
+            uttr.pitch = 1.1;
+            const voices = window.speechSynthesis.getVoices();
+            const femaleVoice = voices.find(v => v.lang === 'ko-KR' && (v.name.includes('Google') || v.name.includes('Female') || v.name.includes('Heami')));
+            if (femaleVoice) uttr.voice = femaleVoice;
+            window.speechSynthesis.speak(uttr);
+        }
+
+        let adminRec;
+        function toggleAdminVoice() {
+            const btn = document.getElementById('admin-mic-btn');
+            const caption = document.getElementById('live-caption');
+            if(btn.classList.contains('listening')) { if(adminRec) adminRec.stop(); return; }
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if(!SR) return;
+            adminRec = new SR(); adminRec.lang = 'ko-KR';
+            adminRec.interimResults = true;
+
+            adminRec.onstart = () => { 
+                window.speechSynthesis.cancel();
+                btn.style.background = '#ef4444'; btn.classList.add('listening'); caption.style.display = 'block'; caption.innerText = "듣고 있어요..."; 
+            };
+            adminRec.onend = () => { btn.style.background = '#3b82f6'; btn.classList.remove('listening'); setTimeout(() => { caption.style.display = 'none'; }, 2000); };
+            
+            adminRec.onresult = (e) => {
+                const toast = document.getElementById('admin-voice-toast');
+                let interim = "";
+                for (let i = e.resultIndex; i < e.results.length; ++i) {
+                    if (e.results[i].isFinal) {
+                        const transcript = e.results[i][0].transcript;
+                        toast.style.display = 'block'; toast.innerText = `🎙️ "${transcript}" 처리 중...`;
+                        
+                        fetch(`/api/general/management-order`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ message: transcript, visible_info: getVisibleInfo() })
+                        })
+                        .then(r => r.json()).then(data => {
+                            toast.innerText = `🤖 ${data.reply}`;
+                            speakResponse(data.reply); // [추가] AI 보이스 출력
+                            
+                            if (data.action && data.action.type === 'navigate' && data.action.url) {
+                                setTimeout(() => { window.location.href = data.action.url; }, 1500);
+                            } else {
+                                setTimeout(() => { toast.style.display = 'none'; }, 2500);
+                            }
+                        }).catch(() => { toast.style.display = 'none'; });
+                    } else {
+                        interim += e.results[i][0].transcript;
+                    }
+                }
+                if(interim) caption.innerText = interim;
+            };
+            adminRec.start();
+        }
+        window.speechSynthesis.getVoices();
+    </script>
+</body>
+</html>

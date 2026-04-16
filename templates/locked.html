@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>수라골 참숯갈비 - 접근 제한</title>
+    <style>
+        body { 
+            background-color: #0F0F0F; 
+            color: white; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            margin: 0;
+            font-family: 'Pretendard', sans-serif; 
+            text-align: center; 
+        }
+        .box { 
+            background: rgba(255, 255, 255, 0.05); 
+            padding: 40px; 
+            border-radius: 12px; 
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin: 20px; 
+            max-width: 320px;
+        }
+        h2 { margin-top: 0; color: #fff; }
+        .btn { 
+            background: #8B0000; 
+            color: white; 
+            padding: 14px 28px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            text-decoration: none; 
+            margin-top: 30px; 
+            display: inline-block;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        .text-muted { color: #aaa; font-size: 0.9rem; margin-top: 25px; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>⚠️ 주문 불가</h2>
+        <p style="font-size: 1.1rem; line-height: 1.5;"><strong style="color: #D4AF37;">{{ table_id }}번 테이블</strong>은 이미 다른 분께서<br>진행 중인 주문이 있습니다.</p>
+        <p class="text-muted">일행의 스마트폰을 확인해 주세요.<br>(주문 결제가 완료되어야<br>새 기기에서 접속이 가능합니다.)</p>
+        <button class="btn" onclick="location.reload()">새로고침</button>
+    </div>
+</body>
+</html>

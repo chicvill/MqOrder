@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ko">
+{% from 'macros/ai_assistant_ui.html' import render_ai_assistant %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MQnet Central Admin{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        :root {
+            --primary: #3b82f6; --primary-soft: rgba(59, 130, 246, 0.1);
+            --accent: #10b981; --accent-soft: rgba(16, 185, 129, 0.1);
+            --warning: #f59e0b; --danger: #ef4444;
+            --bg: #0b1120; --card: #111b33; --border: #1e293b;
+            --text-main: #f8fafc; --text-dim: #94a3b8;
+            --navbar-height: 52px; --bottom-nav-height: 60px;
+            --radius: 12px;
+        }
+        body { 
+            background: var(--bg); color: var(--text-main); font-family: 'Pretendard', sans-serif; 
+            min-height: 100vh; margin: 0; overflow-x: hidden; -webkit-font-smoothing: antialiased;
+            font-size: 13px; line-height: 1.4;
+        }
+        
+        /* 🚀 Professional Top Navigation Bar */
+        .top-navbar {
+            position: fixed; top: 0; left: 0; right: 0; height: var(--navbar-height);
+            background: rgba(11, 17, 32, 0.8); backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border); z-index: 2500;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 30px; box-sizing: border-box;
+        }
+        .nav-logo { font-size: 1.05rem; font-weight: 950; text-decoration: none; color: white; letter-spacing: -0.5px; }
+        .nav-logo span { background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .nav-center-actions { display: flex; gap: 8px; align-items: center; }
+        .nav-btn-home { background: var(--border); color: var(--text-dim); border: none; padding: 5px 10px; border-radius: 6px; text-decoration: none; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; gap: 6px; transition: 0.2s; border: 1px solid transparent; }
+        .nav-btn-home:hover { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); }
+        .nav-btn-home.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .nav-user-info { display: flex; align-items: center; gap: 20px; }
+        .nav-user-details { text-align: right; }
+        .nav-user-role { font-size: 0.5rem; color: var(--primary); font-weight: 950; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: -3px; opacity: 0.8; }
+        .nav-user-name { display: block; font-size: 0.75rem; font-weight: 700; color: white; }
+        
+        .nav-logout-btn { color: var(--danger); text-decoration: none; font-size: 0.8rem; font-weight: 800; display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; transition: 0.2s; }
+        .nav-logout-btn:hover { background: rgba(239, 68, 68, 0.1); }
+
+        .main-content { 
+            padding: calc(var(--navbar-height) + 0.6rem) 15px 1.5rem; 
+            max-width: 1400px; margin: 0 auto;
+            box-sizing: border-box; min-height: 100vh;
+        }
+
+        /* 📱 Mobile UI Adjustments */
+        @media (max-width: 768px) {
+            .top-navbar { padding: 0 15px; }
+            .nav-user-details { display: none; }
+            .nav-btn-home span { display: none; }
+            .main-content { padding: calc(var(--navbar-height) + 1.5rem) 15px calc(var(--bottom-nav-height) + 2rem); }
+            .bottom-nav { display: flex !important; }
+        }
+
+        /* Essential Global Tags */
+        h1 { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 1rem; }
+        .admin-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 15px; box-shadow: var(--shadow-md); transition: 0.3s; }
+        input, select, textarea { 
+            background: #0f172a; border: 1px solid var(--border); border-radius: 8px; 
+            color: white; padding: 6px 10px; font-size: 0.8rem; outline: none; transition: 0.2s;
+        }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+    </style>
+    {% block extra_style %}{% endblock %}
+</head>
+<body>
+    <!-- Top Navigation Bar (Always Visible) -->
+    <header class="top-navbar">
+        <div style="display: flex; align-items: center; gap: 30px;">
+            <a href="/admin/performance" class="nav-logo">MQnet Hub</a>
+        </div>
+        
+        <div class="nav-user-info">
+            <div class="nav-user-details">
+                <span class="nav-user-role">{{ session['role'].upper() }}</span>
+                <span class="nav-user-name">{{ session['username'] }} 님</span>
+            </div>
+            <a href="/profile" style="color:var(--text-dim); text-decoration:none;"><i data-lucide="user-cog" size="20"></i></a>
+            <a href="/logout" class="nav-logout-btn">
+                <i data-lucide="log-out" size="18"></i> 로그아웃
+            </a>
+        </div>
+    </header>
+
+    <!-- Bottom Navigation Bar (Mobile Only) -->
+    <nav class="bottom-nav" style="display: none;">
+        <a href="/admin/performance" class="bottom-nav-item {% if active_page == 'performance' %}active{% endif %}">
+            <i data-lucide="line-chart"></i>
+            <span>통계</span>
+        </a>
+        <a href="/admin/stores" class="bottom-nav-item {% if active_page == 'stores' %}active{% endif %}">
+            <i data-lucide="store"></i>
+            <span>가맹점</span>
+        </a>
+        <a href="/admin/staff" class="bottom-nav-item {% if active_page == 'staff' %}active{% endif %}">
+            <i data-lucide="users"></i>
+            <span>직원관리</span>
+        </a>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        {% block content %}{% endblock %}
+        
+        <footer style="margin-top: 4rem; padding-bottom: 2rem; color: var(--text-dim); font-size: 0.7rem; text-align: center; opacity: 0.4;">
+            &copy; 2026 MQnet Professional Infrastructure | mqnet@gmail.com
+        </footer>
+    </div>
+
+    <!-- [신규] 근태 승인 보안 모달 (전역) -->
+    <!-- 근태 승인 보안 모달 (전역) -->
+    <div id="attendance-confirm-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; display:none; justify-content:center; align-items:center; backdrop-filter:blur(10px);">
+        <div style="background:#1e293b; border:2px solid var(--primary); border-radius:30px; padding:40px; width:320px; text-align:center;">
+            <div id="att-type-badge" style="background:var(--primary); display:inline-block; padding:5px 15px; border-radius:50px; font-weight:950; margin-bottom:20px; font-size:0.8rem;">출근 승인 요청</div>
+            <h3 id="att-staff-name" style="margin-bottom:30px; font-size:1.5rem;">홍길동 님</h3>
+            
+            <p style="color:var(--text-dim); font-size:0.8rem; margin-bottom:15px;">매장 PIN 번호 4자리를 입력하세요</p>
+            <input type="password" id="att-pin-input" maxlength="4" placeholder="••••" 
+                   style="width:100%; background:#0f172a; border:2px solid var(--border); color:#fff; font-size:2rem; text-align:center; padding:15px; border-radius:15px; outline:none; letter-spacing:10px;">
+            
+            <div style="margin-top:20px; color:var(--danger); font-size:0.75rem; display:none;" id="att-error-msg">핀 번호가 틀렸습니다.</div>
+            
+            <button onclick="closeAttModal()" style="margin-top:30px; background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:0.85rem;">나중에 하기 (닫기)</button>
+        </div>
+    </div>
+    <!-- [글로벌 AI 매니저 장착] -->
+    {{ render_ai_assistant(session.get('store_id', 'none')) }}
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        window.addEventListener('load', () => { if(window.lucide) lucide.createIcons(); });
+
+        const socket = io();
+        const adminSlug = "{{ session['store_id'] }}";
+        let currentAttId = null;
+
+        if (adminSlug) {
+            socket.emit('join', { room: adminSlug });
+            
+            // 근태 요청 수신
+            socket.on('attendance_request', (data) => {
+                currentAttId = data.id;
+                document.getElementById('att-staff-name').innerText = data.name + ' 님';
+                document.getElementById('att-type-badge').innerText = data.type + ' 승인 요청';
+                document.getElementById('attendance-confirm-overlay').style.display = 'flex';
+                document.getElementById('att-pin-input').value = '';
+                document.getElementById('att-pin-input').focus();
+            });
+        }
+
+        // PIN 입력 자동 체크 (4자리 입력 시 바로 전송)
+        document.getElementById('att-pin-input').addEventListener('input', async function(e) {
+            if (this.value.length === 4) {
+                const res = await fetch(`/api/${adminSlug}/attendance/approve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: currentAttId, pin: this.value })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    closeAttModal();
+                } else {
+                    document.getElementById('att-error-msg').style.display = 'block';
+                    this.value = '';
+                }
+            }
+        });
+
+        function closeAttModal() {
+            document.getElementById('attendance-confirm-overlay').style.display = 'none';
+            document.getElementById('att-error-msg').style.display = 'none';
+        }
+
+    </script>
+    {% block extra_script %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>{% if store.id == 'MQ-cafe' %}수라골 참숯갈비 준비 현황{% else %}{{ store.name }} - 주문 현황{% endif %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ range(1, 9999) | random }}">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        .ready-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: clamp(20px, 5vw, 40px);
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: clamp(20px, 4vw, 40px);
+            border: 3px solid var(--secondary-color);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            animation: pulse 2s infinite;
+            min-width: clamp(140px, 45vw, 300px);
+        }
+        .ready-session {
+            font-size: clamp(2.5rem, 15vw, 5rem);
+            font-weight: 900;
+            color: var(--secondary-color);
+            line-height: 1;
+            margin-bottom: 10px;
+        }
+        .ready-table {
+            font-size: clamp(1rem, 5vw, 2rem);
+            font-weight: bold;
+            color: white;
+            opacity: 0.9;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 rgba(241, 196, 15, 0.4); }
+            50% { transform: scale(1.03); box-shadow: 0 10px 40px rgba(241, 196, 15, 0.6); }
+            100% { transform: scale(1); box-shadow: 0 0 0 rgba(241, 196, 15, 0.4); }
+        }
+    </style>
+</head>
+<body style="background-color: #000; overflow: hidden; display: flex; flex-direction: column; height: 100vh;">
+    <header style="padding: 20px 40px; justify-content: space-between; background: #000; border: none;">
+        <h1 style="font-size: 2.2rem; color: #f1c40f; font-weight: 900; letter-spacing: -1px; text-shadow: 0 0 15px rgba(241, 196, 15, 0.4);">
+            {% if store.id == 'MQ-cafe' %}수라골 참숯갈비{% else %}{{ store.name }}{% endif %}
+        </h1>
+        <div style="color: #fff; font-size: 1.2rem; font-weight: bold; padding: 5px 20px; border: 2px solid var(--secondary-color); border-radius: 30px;">
+            배식구
+        </div>
+    </header>
+
+    <div class="display-container" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px;">
+        <div style="text-align: center; margin-bottom: 60px;">
+            <p style="color: rgba(255,255,255,0.6); font-size: 1.8rem; font-weight: 500;">
+                번호 확인 후 수령하세요
+            </p>
+        </div>
+        
+        <div id="ready-numbers" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 40px; width: 100%;">
+            <!-- 주문 데이터가 동적으로 생성되어 배치됩니다 -->
+            <div style="color: #333; font-size: 4rem; font-weight: 900; letter-spacing: 5px;">WAITING...</div>
+        </div>
+    </div>
+
+    <!-- 알림음 -->
+    <audio id="chime" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
+
+    <script>
+        const socket = io({
+            transports: ['websocket', 'polling'],
+            upgrade: true
+        });
+
+        socket.on('connect', () => {
+            console.log('Display Socket Connected!');
+            socket.emit('join', { store_id: '{{ store.id }}' });
+            loadInitialData();
+        });
+
+        // readyOrders: orderId -> { session_id, table_id }
+        let readyOrders = new Map();
+
+        socket.on('connect', () => {
+            console.log('Display Socket Connected!');
+            loadInitialData();
+        });
+
+        socket.on('order_status_update', (order) => {
+            console.log('Order Status Update:', order);
+            if (order.status === 'ready') {
+                if (!readyOrders.has(order.id)) {
+                    readyOrders.set(order.id, {
+                        order_no: order.order_no || (order.session_id || '---'),
+                        table_id: order.table_id
+                    });
+                    playChime();
+                    renderDisplay();
+                }
+            } else if (order.status === 'served' || order.status === 'paid') {
+                if (readyOrders.has(order.id)) {
+                    readyOrders.delete(order.id);
+                    renderDisplay();
+                }
+            }
+        });
+
+        // 테이블 전체 비우기 또는 결제 시 관리
+        socket.on('table_status_update', (data) => {
+            console.log('Table Status Update:', data);
+            if (data.status === 'served' || data.status === 'paid') {
+                // 해당 테이블의 모든 ready 주문 삭제
+                for (let [orderId, info] of readyOrders) {
+                    if (String(info.table_id) === String(data.table_id)) {
+                        readyOrders.delete(orderId);
+                    }
+                }
+                renderDisplay();
+            }
+        });
+
+        async function loadInitialData() {
+            try {
+                const res = await fetch('/api/{{ store.id }}/orders');
+                const data = await res.json();
+                readyOrders.clear();
+                data.forEach(order => {
+                    if (order.status === 'ready') {
+                        readyOrders.set(order.id, {
+                            order_no: order.order_no || (order.session_id || '---'),
+                            table_id: order.table_id
+                        });
+                    }
+                });
+                renderDisplay();
+            } catch (e) {
+                console.error('Initial Load Error:', e);
+            }
+        }
+
+        function renderDisplay() {
+            const container = document.getElementById('ready-numbers');
+            container.innerHTML = '';
+            
+            if (readyOrders.size === 0) {
+                container.innerHTML = '<div style="color: #222; font-size: 5rem; font-weight: 900; letter-spacing: 10px;">WAITING...</div>';
+                return;
+            }
+
+            // 중복된 주문번호는 하나만 보여주거나 세션별로 묶어서 렌더링
+            const uniqueDisplays = new Map();
+            for (let info of readyOrders.values()) {
+                const key = `${info.order_no}-${info.table_id}`;
+                uniqueDisplays.set(key, info);
+            }
+
+            Array.from(uniqueDisplays.values()).forEach(info => {
+                const item = document.createElement('div');
+                item.className = 'ready-item';
+                item.innerHTML = `
+                    <div class="ready-session">#${info.order_no}</div>
+                    <div class="ready-table">${info.table_id}번 테이블</div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function playChime() {
+            const audio = document.getElementById('chime');
+            audio.play().catch(e => console.log('Audio blocked'));
+        }
+    </script>
+</body>
+</html>

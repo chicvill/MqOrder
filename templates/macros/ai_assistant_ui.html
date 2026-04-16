@@ -1,0 +1,176 @@
+{# 
+    MQnet AI Assistant UI Component (Chat Edition)
+    카카오톡 스타일 말풍선 및 상시 상단 노출 최적화
+#}
+{% macro render_ai_assistant(store_slug='none') %}
+<div id="ai-assistant-root" style="position:relative; z-index:2000000;">
+    <!-- 채팅 오버레이 컨테이너 (Z-index 대폭 강화) -->
+    <div id="ai-chat-overlay" style="display:none; position:fixed; bottom:110px; right:30px; width:340px; max-height:450px; background:rgba(186, 206, 224, 0.95); backdrop-filter:blur(15px); border-radius:25px; flex-direction:column; padding:15px; overflow-y:auto; z-index:2000001; box-shadow:0 15px 50px rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.3); scroll-behavior: smooth;">
+        <!-- 메시지 렌더 구역 -->
+    </div>
+
+    <!-- 플로팅 마이크 버튼 (이동 가능하게 onclick 제거하고 JS로 처리) -->
+    <div id="mgr-mic-btn" 
+         style="position:fixed; bottom:40px; right:40px; width:80px; height:80px; background:#3b82f6; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:move; z-index:999999; box-shadow:0 15px 45px rgba(59,130,246,0.6); border:4px solid rgba(255,255,255,0.3); transition: transform 0.2s, background 0.2s, box-shadow 0.2s; -webkit-tap-highlight-color: transparent;">
+        <i data-lucide="mic" size="38" style="pointer-events:none;"></i>
+        <!-- 실시간 자막 -->
+        <div id="live-caption" style="display:none; position:absolute; bottom:90px; right:0; white-space:nowrap; background:rgba(15,23,42,0.98); color:#fff; padding:12px 22px; border-radius:20px; font-size:1rem; font-weight:800; backdrop-filter:blur(12px); border:2px solid #3b82f6; pointer-events:none; box-shadow:0 10px 20px rgba(0,0,0,0.4);"></div>
+    </div>
+</div>
+
+<script>
+    // 드래그(이동) 기능 구현
+    (function() {
+        const btn = document.getElementById('mgr-mic-btn');
+        let isDragging = false;
+        let startX, startY, initialX, initialY;
+        let isClick = true;
+
+        // 저장된 위치가 있으면 불러오기
+        const savedPos = localStorage.getItem('ai_mic_pos');
+        if (savedPos) {
+            const pos = JSON.parse(savedPos);
+            btn.style.right = 'auto';
+            btn.style.bottom = 'auto';
+            btn.style.left = pos.left + 'px';
+            btn.style.top = pos.top + 'px';
+        }
+
+        btn.addEventListener('mousedown', dragStart);
+        btn.addEventListener('touchstart', dragStart, {passive: false});
+
+        function dragStart(e) {
+            if (e.type === 'touchstart') e = e.touches[0];
+            initialX = btn.offsetLeft;
+            initialY = btn.offsetTop;
+            startX = e.clientX;
+            startY = e.clientY;
+            isDragging = true;
+            isClick = true; // 처음엔 클릭으로 간주
+
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('touchmove', drag, {passive: false});
+            document.addEventListener('mouseup', dragEnd);
+            document.addEventListener('touchend', dragEnd);
+        }
+
+        function drag(e) {
+            if (!isDragging) return;
+            if (e.type === 'touchmove') e = e.touches[0];
+            
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            
+            // 조금이라도 이동했으면 클릭이 아님
+            if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+                isClick = false;
+                
+                // 임시로 우측/하단 정렬을 풀고 좌측/상단 기준으로 변경
+                btn.style.right = 'auto';
+                btn.style.bottom = 'auto';
+                btn.style.left = (initialX + dx) + 'px';
+                btn.style.top = (initialY + dy) + 'px';
+                
+                // 화면 밖으로 나가지 못하게 제한 (선택 사항)
+                const maxX = window.innerWidth - btn.offsetWidth;
+                const maxY = window.innerHeight - btn.offsetHeight;
+                if (parseInt(btn.style.left) < 0) btn.style.left = '0px';
+                if (parseInt(btn.style.left) > maxX) btn.style.left = maxX + 'px';
+                if (parseInt(btn.style.top) < 0) btn.style.top = '0px';
+                if (parseInt(btn.style.top) > maxY) btn.style.top = maxY + 'px';
+            }
+        }
+
+        function dragEnd(e) {
+            isDragging = false;
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('touchmove', drag);
+            document.removeEventListener('mouseup', dragEnd);
+            document.removeEventListener('touchend', dragEnd);
+            
+            if (!isClick) {
+                // 이동이 끝났으면 현재 위치를 저장
+                localStorage.setItem('ai_mic_pos', JSON.stringify({
+                    left: btn.offsetLeft,
+                    top: btn.offsetTop
+                }));
+            }
+        }
+        
+        // 클릭 이벤트 핸들러 분리
+        btn.addEventListener('click', (e) => {
+            if (!isClick) { // 드래그 후 마우스를 뗐을 때 클릭이 실행되는 것 방지
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+            console.log('🎤 Mic Button Clicked');
+            if(window.MQnetAI) { 
+                window.MQnetAI.toggleListening(); 
+            } else { 
+                console.error('AI Assistant not initialized'); 
+                alert('AI 비서가 아직 초기화 중입니다. 잠시 후 닫기나 다시 시도해 주세요.'); 
+            }
+        });
+    })();
+</script>
+
+<style>
+    /* 카카오톡 스타일 정밀 튜닝 */
+    .ai-msg-wrapper { display: flex; flex-direction: column; margin-bottom: 15px; max-width: 88%; opacity: 0; transform: translateY(10px); animation: aiMsgIn 0.3s forwards; }
+    @keyframes aiMsgIn { to { opacity: 1; transform: translateY(0); } }
+
+    .ai-msg-wrapper.bot { align-self: flex-start; }
+    .ai-msg-wrapper.user { align-self: flex-end; }
+
+    .ai-bubble { padding: 12px 16px; border-radius: 18px; font-size: 0.95rem; line-height: 1.5; position: relative; font-weight: 600; box-shadow: 0 3px 10px rgba(0,0,0,0.1); }
+    .bot .ai-bubble { background: #fff; color: #1a1a1b; border-top-left-radius: 4px; }
+    .user .ai-bubble { background: #fee500; color: #1a1a1b; border-top-right-radius: 4px; }
+
+    .ai-msg-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .ai-action-chip { 
+        background: #fff; border: 1.5px solid #3b82f6; padding: 8px 16px; 
+        border-radius: 25px; font-size: 0.85rem; font-weight: 800; cursor: pointer; color: #3b82f6;
+        transition: all 0.25s;
+    }
+    .ai-action-chip:hover { background: #3b82f6; color: #fff; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(59,130,246,0.3); }
+
+    #mgr-mic-btn:hover {
+        transform: scale(1.1) translateY(-5px);
+        background: #2563eb !important;
+        box-shadow: 0 20px 60px rgba(59,130,246,0.8);
+    }
+    #mgr-mic-btn:active {
+        transform: scale(0.95);
+    }
+    #mgr-mic-btn.listening {
+        animation: ai-mic-pulse 1.2s infinite ease-in-out;
+        background: #ef4444 !important;
+        border-color: #fca5a5 !important;
+    }
+    @keyframes ai-mic-pulse {
+        0% { transform: scale(1); box-shadow: 0 10px 30px rgba(59,130,246,0.6); }
+        50% { transform: scale(1.15); box-shadow: 0 20px 50px rgba(239,68,68,0.8); }
+        100% { transform: scale(1); box-shadow: 0 10px 30px rgba(59,130,246,0.6); }
+    }
+    #ai-chat-overlay::-webkit-scrollbar { width: 5px; }
+    #ai-chat-overlay::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 10px; }
+</style>
+
+<script src="{{ url_for('static', filename='js/ai_assistant.js') }}?v=v1.1_stable"></script>
+<script>
+    (function() {
+        function launchAI() {
+            if (typeof MQnetAIAssistant !== 'undefined' && !window.MQnetAI) {
+                console.log("🧩 AI 비서 시스템 가동...");
+                window.MQnetAI = new MQnetAIAssistant({
+                    storeSlug: "{{ store_slug }}",
+                    userName: "{{ session.get('username', '사용자') }}"
+                });
+            }
+        }
+        if (document.readyState === 'complete') launchAI();
+        else window.addEventListener('load', launchAI);
+    })();
+</script>
+{% endmacro %}

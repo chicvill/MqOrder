@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>MQnet — 무료 체험 시작</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* ── Step Indicator ── */
+        .step-bar {
+            display: flex;
+            align-items: center;
+            padding: 1.5rem 1.5rem 0;
+            gap: 0;
+        }
+        .step-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        .step-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 18px;
+            left: 50%;
+            width: 100%;
+            height: 2px;
+            background: var(--border);
+            transition: background 0.4s;
+        }
+        .step-item.done::after,
+        .step-item.active::after {
+            background: var(--accent);
+        }
+        .step-dot {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--bg-glass);
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-dim);
+            transition: all 0.4s;
+            position: relative;
+            z-index: 1;
+        }
+        .step-item.active .step-dot {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #000;
+            box-shadow: 0 0 16px rgba(0,242,255,0.4);
+        }
+        .step-item.done .step-dot {
+            background: rgba(0,242,255,0.15);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .step-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+            font-weight: 500;
+        }
+        .step-item.active .step-label { color: var(--accent); font-weight: 700; }
+        .step-item.done .step-label { color: var(--text-dim); }
+
+        /* ── Step Panels ── */
+        .step-panel { display: none; }
+        .step-panel.active {
+            display: block;
+            animation: fadeUp 0.4s ease forwards;
+        }
+
+        /* ── Hero Banner (Step 1 top) ── */
+        .trial-banner {
+            background: linear-gradient(135deg, rgba(0,242,255,0.08), rgba(59,130,246,0.08));
+            border: 1px solid var(--border-accent);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        .trial-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: var(--accent);
+            color: #000;
+            font-size: 0.8rem;
+            font-weight: 800;
+            padding: 0.3rem 0.8rem;
+            border-radius: 100px;
+            margin-bottom: 0.7rem;
+        }
+        .trial-banner h2 {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 0.3rem;
+        }
+        .trial-banner p {
+            font-size: 0.88rem;
+            color: var(--text-dim);
+        }
+
+        /* ── Slug Input with Check Button ── */
+        .slug-row {
+            display: flex;
+            gap: 0.7rem;
+            align-items: flex-start;
+        }
+        .slug-prefix {
+            display: flex;
+            align-items: center;
+            padding: 0.9rem 1rem;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-dim);
+            font-size: 0.88rem;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .slug-row .form-control {
+            flex: 1;
+        }
+        #slugStatus {
+            font-size: 0.78rem;
+            margin-top: 0.4rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        #slugStatus.ok  { color: var(--success); }
+        #slugStatus.err { color: var(--danger); }
+
+        /* ── Color Picker ── */
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 0.6rem;
+        }
+        .color-opt {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 10px;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .color-opt:hover { transform: scale(1.1); }
+        .color-opt.selected { border-color: #fff; transform: scale(1.1); }
+
+        /* ── Tables Count Slider ── */
+        .range-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .range-val {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--accent);
+            min-width: 40px;
+            text-align: center;
+        }
+        input[type="range"] {
+            flex: 1;
+            accent-color: var(--accent);
+            height: 4px;
+        }
+
+        /* ── Success Screen (Step 3) ── */
+        .success-icon {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            background: rgba(0,242,255,0.1);
+            border: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2.5rem;
+            color: var(--accent);
+            animation: pulse-glow 2s infinite;
+        }
+
+        /* ── Agree Box ── */
+        .agree-box {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.8rem;
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--bg-glass);
+            margin-bottom: 0.8rem;
+            cursor: pointer;
+        }
+        .agree-box input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--accent);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .agree-box .agree-text {
+            font-size: 0.88rem;
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+        .agree-box .agree-text a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        /* ── Password Strength ── */
+        .pw-strength {
+            height: 4px;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+            background: var(--border);
+            overflow: hidden;
+        }
+        .pw-strength-bar {
+            height: 100%;
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.3s, background 0.3s;
+        }
+
+        /* ── Navigation Buttons ── */
+        .step-nav {
+            display: flex;
+            gap: 0.8rem;
+            margin-top: 2rem;
+            padding-bottom: 2rem;
+        }
+        .step-nav .btn-back {
+            flex: 0 0 auto;
+            padding: 0.9rem 1.2rem;
+            background: var(--bg-glass);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: background 0.2s;
+        }
+        .step-nav .btn-back:hover { background: rgba(255,255,255,0.08); }
+    </style>
+</head>
+<body>
+<div class="app-shell">
+
+    <!-- Header -->
+    <header class="app-header">
+        <a href="/" class="app-logo">MQnet</a>
+        <a href="/login" class="btn btn-sm btn-secondary" style="width:auto;">로그인</a>
+    </header>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+    <div class="page-content" style="padding-bottom:0;">
+        <div class="flash-msg flash-{{ 'error' if cat == 'error' else 'success' }}">
+            <i class="fa-solid fa-{{ 'circle-xmark' if cat == 'error' else 'circle-check' }}"></i>
+            {{ msg }}
+        </div>
+    </div>
+    {% endfor %}
+    {% endwith %}
+
+    <!-- Step Indicator -->
+    <div class="step-bar">
+        <div class="step-item active" id="si-1">
+            <div class="step-dot">1</div>
+            <span class="step-label">계정</span>
+        </div>
+        <div class="step-item" id="si-2">
+            <div class="step-dot">2</div>
+            <span class="step-label">매장</span>
+        </div>
+        <div class="step-item" id="si-3">
+            <div class="step-dot"><i class="fa-solid fa-check" style="font-size:0.8rem;"></i></div>
+            <span class="step-label">완료</span>
+        </div>
+    </div>
+
+    <form id="registerForm" method="POST" action="/register">
+    <input type="hidden" name="theme_color" id="theme_color_input" value="#3b82f6">
+    <input type="hidden" name="tables_count" id="tables_count_input" value="10">
+
+    <!-- ══ STEP 1: 계정 정보 ══ -->
+    <div class="step-panel active" id="step-1">
+        <div class="page-content">
+
+            <div class="trial-banner">
+                <div class="trial-badge"><i class="fa-solid fa-gift"></i> 7일 무료 체험</div>
+                <h2>지금 바로 시작하세요</h2>
+                <p>카드 등록 없이 7일간 모든 기능을 무료로 사용하세요.</p>
+            </div>
+
+            <div class="form-group">
+                <label for="full_name"><i class="fa-solid fa-user" style="margin-right:4px;"></i> 대표자 성명</label>
+                <input class="form-control" type="text" id="full_name" name="full_name" placeholder="홍길동" required>
+            </div>
+
+            <div class="form-group">
+                <label for="phone"><i class="fa-solid fa-phone" style="margin-right:4px;"></i> 휴대폰 번호</label>
+                <input class="form-control" type="tel" id="phone" name="phone" placeholder="010-0000-0000" required>
+            </div>
+
+            <div class="form-group">
+                <label for="username"><i class="fa-solid fa-at" style="margin-right:4px;"></i> 로그인 아이디</label>
+                <input class="form-control" type="text" id="username" name="username" placeholder="영문, 숫자 조합 (4자 이상)" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password"><i class="fa-solid fa-lock" style="margin-right:4px;"></i> 비밀번호</label>
+                <input class="form-control" type="password" id="password" name="password" placeholder="8자 이상 입력" required>
+                <div class="pw-strength"><div class="pw-strength-bar" id="pwBar"></div></div>
+                <p class="form-hint" id="pwHint"></p>
+            </div>
+
+            <div class="form-group">
+                <label for="confirm_password">비밀번호 확인</label>
+                <input class="form-control" type="password" id="confirm_password" name="confirm_password" placeholder="다시 입력" required>
+                <p class="form-error" id="pwMatchErr" style="display:none;"><i class="fa-solid fa-triangle-exclamation"></i> 비밀번호가 일치하지 않습니다.</p>
+            </div>
+
+            <hr class="divider">
+            <span class="section-label">약관 동의</span>
+
+            <label class="agree-box">
+                <input type="checkbox" name="agree_terms" id="agree_terms" required>
+                <div class="agree-text">[필수] <a href="/terms" target="_blank">이용약관</a>에 동의합니다.</div>
+            </label>
+            <label class="agree-box">
+                <input type="checkbox" name="agree_privacy" id="agree_privacy" required>
+                <div class="agree-text">[필수] <a href="/privacy" target="_blank">개인정보 처리방침</a>에 동의합니다.</div>
+            </label>
+            <label class="agree-box">
+                <input type="checkbox" name="agree_age" id="agree_age" required>
+                <div class="agree-text">[필수] 만 19세 이상이며, 본인 명의로 가입합니다.</div>
+            </label>
+
+            <div class="step-nav">
+                <button type="button" class="btn btn-primary" id="toStep2Btn">
+                    다음 단계 <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ STEP 2: 매장 설정 ══ -->
+    <div class="step-panel" id="step-2">
+        <div class="page-content">
+
+            <div class="card card-accent" style="margin-bottom:1.5rem; text-align:center;">
+                <h2 class="page-title" style="font-size:1.3rem;">매장 정보를 입력해 주세요</h2>
+                <p class="page-subtitle">가입 후 수정도 가능합니다.</p>
+                
+                <hr style="border:none; border-top:1px solid rgba(255,255,255,0.05); margin:1rem 0;">
+                
+                {# OCR 업로드 영역 #}
+                <div id="ocr-area" style="cursor:pointer; background:rgba(0,242,255,0.05); border:1px dashed var(--accent); padding:1rem; border-radius:12px; transition:0.2s;" onclick="document.getElementById('biz_image').click()">
+                    <i class="fa-solid fa-camera-retro" style="font-size:1.5rem; color:var(--accent); margin-bottom:8px;"></i>
+                    <div style="font-size:0.85rem; font-weight:700; color:var(--accent);">사업자등록증 사진으로 자동 완성</div>
+                    <div style="font-size:0.7rem; color:var(--text-muted); margin-top:4px;">사진 한 장으로 간편하게 시작하세요</div>
+                    <input type="file" id="biz_image" accept="image/*" style="display:none;" onchange="handleOCR(this)">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="store_name"><i class="fa-solid fa-store" style="margin-right:4px;"></i> 매장명</label>
+                <input class="form-control" type="text" id="store_name" name="store_name" placeholder="예: 수라골 참숯갈비" required>
+            </div>
+
+            <div class="form-group">
+                <label>매장 주소 (URL 코드)</label>
+                <div class="slug-row">
+                    <div class="slug-prefix">mqnet.kr/</div>
+                    <input class="form-control" type="text" id="store_slug" name="store_id" placeholder="영문·숫자(예: suragol)" required
+                        oninput="checkSlug(this.value)" pattern="[a-z0-9\-]{2,30}">
+                </div>
+                <div id="slugStatus"></div>
+                <p class="form-hint">영문 소문자, 숫자, 하이픈(-) 만 사용 가능 / 2~30자</p>
+            </div>
+
+            <div class="form-group">
+                <label><i class="fa-solid fa-table-cells-large" style="margin-right:4px;"></i> 테이블 수</label>
+                <div class="range-row">
+                    <div class="range-val" id="tableVal">10</div>
+                    <input type="range" id="tableRange" min="1" max="50" value="10"
+                        oninput="document.getElementById('tableVal').textContent=this.value; document.getElementById('tables_count_input').value=this.value;">
+                    <div style="font-size:0.85rem; color:var(--text-muted);">최대 50석</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label><i class="fa-solid fa-palette" style="margin-right:4px;"></i> 주문창 테마 색상</label>
+                <div class="color-grid">
+                    <div class="color-opt selected" style="background:#3b82f6;" data-color="#3b82f6" onclick="pickColor(this)"></div>
+                    <div class="color-opt" style="background:#00f2ff;" data-color="#00f2ff" onclick="pickColor(this)"></div>
+                    <div class="color-opt" style="background:#a855f7;" data-color="#a855f7" onclick="pickColor(this)"></div>
+                    <div class="color-opt" style="background:#f43f5e;" data-color="#f43f5e" onclick="pickColor(this)"></div>
+                    <div class="color-opt" style="background:#f97316;" data-color="#f97316" onclick="pickColor(this)"></div>
+                    <div class="color-opt" style="background:#22d3a5;" data-color="#22d3a5" onclick="pickColor(this)"></div>
+                </div>
+            </div>
+
+            <div class="step-nav">
+                <button type="button" class="btn-back" onclick="goStep(1)"><i class="fa-solid fa-arrow-left"></i></button>
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    <i class="fa-solid fa-rocket"></i> 7일 무료 체험 시작!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    </form><!-- end form -->
+
+    <!-- ══ STEP 3: 완료 ══ (서버 처리 후 리다이렉트, 또는 AJAX 성공 시 표시) -->
+    <div class="step-panel" id="step-3">
+        <div class="page-content" style="text-align:center; padding-top: 3rem;">
+            <div class="success-icon"><i class="fa-solid fa-check"></i></div>
+            <h2 class="page-title" style="margin-bottom:0.5rem;">환영합니다!</h2>
+            <p class="page-subtitle" style="margin-bottom:2rem;">7일 무료 체험이 시작되었습니다.<br>지금 바로 매장 설정을 완성해 보세요.</p>
+            <div class="card" style="text-align:left; margin-bottom:1.5rem;">
+                <p style="font-size:0.88rem; color:var(--text-dim); line-height:1.8;">
+                    <i class="fa-solid fa-circle-check" style="color:var(--accent); margin-right:6px;"></i> QR 주문 테이블 생성<br>
+                    <i class="fa-solid fa-circle-check" style="color:var(--accent); margin-right:6px;"></i> 메뉴판 등록<br>
+                    <i class="fa-solid fa-circle-check" style="color:var(--accent); margin-right:6px;"></i> AI 카운터 설정<br>
+                    <i class="fa-solid fa-circle-check" style="color:var(--accent); margin-right:6px;"></i> 직원 계정 초대
+                </p>
+            </div>
+            <a href="/portal/home" class="btn btn-primary">관리 포털로 이동 <i class="fa-solid fa-arrow-right"></i></a>
+        </div>
+    </div>
+
+</div><!-- end app-shell -->
+
+<script>
+// ── Step Navigation ──
+let slugOk = false;
+
+function goStep(n) {
+    document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.step-item').forEach((s, i) => {
+        s.classList.remove('active', 'done');
+        if (i < n - 1) s.classList.add('done');
+        if (i === n - 1) s.classList.add('active');
+    });
+    document.getElementById(`step-${n}`).classList.add('active');
+    window.scrollTo(0, 0);
+}
+
+// ── Step 1 → Step 2 Validation ──
+document.getElementById('toStep2Btn').addEventListener('click', function () {
+    const form = document.getElementById('registerForm');
+    const pw = document.getElementById('password').value;
+    const cpw = document.getElementById('confirm_password').value;
+    const terms = document.getElementById('agree_terms').checked;
+    const privacy = document.getElementById('agree_privacy').checked;
+    const age = document.getElementById('agree_age').checked;
+
+    if (!document.getElementById('full_name').value.trim() ||
+        !document.getElementById('phone').value.trim() ||
+        !document.getElementById('username').value.trim()) {
+        alert('모든 항목을 입력해 주세요.'); return;
+    }
+    if (pw.length < 8) { alert('비밀번호는 8자 이상이어야 합니다.'); return; }
+    if (pw !== cpw) {
+        document.getElementById('pwMatchErr').style.display = 'flex'; return;
+    }
+    document.getElementById('pwMatchErr').style.display = 'none';
+    if (!terms || !privacy || !age) { alert('필수 약관에 모두 동의해 주세요.'); return; }
+    goStep(2);
+});
+
+// ── Password Strength ──
+document.getElementById('password').addEventListener('input', function () {
+    const val = this.value;
+    const bar = document.getElementById('pwBar');
+    const hint = document.getElementById('pwHint');
+    let score = 0;
+    if (val.length >= 8) score++;
+    if (/[A-Z]/.test(val)) score++;
+    if (/[0-9]/.test(val)) score++;
+    if (/[^A-Za-z0-9]/.test(val)) score++;
+    const colors = ['#ff5c5c','#f97316','#facc15','#22d3a5'];
+    const labels = ['취약','보통','강함','매우 강함'];
+    bar.style.width = (score * 25) + '%';
+    bar.style.background = colors[score - 1] || '#333';
+    hint.textContent = score > 0 ? labels[score - 1] : '';
+    hint.style.color = colors[score - 1] || 'inherit';
+});
+
+// ── Password Match ──
+document.getElementById('confirm_password').addEventListener('input', function () {
+    const pw = document.getElementById('password').value;
+    const err = document.getElementById('pwMatchErr');
+    err.style.display = (this.value && this.value !== pw) ? 'flex' : 'none';
+});
+
+// ── Slug Check ──
+let slugTimer;
+function checkSlug(val) {
+    const el = document.getElementById('slugStatus');
+    slugOk = false;
+    if (!val) { el.innerHTML = ''; return; }
+    if (!/^[a-z0-9\-]{2,30}$/.test(val)) {
+        el.className = 'err';
+        el.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> 영문 소문자·숫자·하이픈만 사용 가능';
+        return;
+    }
+    el.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" style="color:var(--text-muted);"></i> 확인 중...';
+    clearTimeout(slugTimer);
+    slugTimer = setTimeout(async () => {
+        const res = await fetch(`/api/check-slug?slug=${val}`);
+        const data = await res.json();
+        if (data.available) {
+            el.className = 'ok';
+            el.innerHTML = '<i class="fa-solid fa-circle-check"></i> 사용 가능한 주소입니다.';
+            slugOk = true;
+        } else {
+            el.className = 'err';
+            el.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> 이미 사용 중인 주소입니다.';
+        }
+    }, 500);
+}
+
+// ── Theme Color Pick ──
+function pickColor(el) {
+    document.querySelectorAll('.color-opt').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('theme_color_input').value = el.dataset.color;
+}
+
+// ── OCR Handling ──
+async function handleOCR(input) {
+    if (!input.files || !input.files[0]) return;
+    
+    const area = document.getElementById('ocr-area');
+    const originalContent = area.innerHTML;
+    
+    // 로딩 상태 표시
+    area.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" style="font-size:1.5rem; color:var(--accent);"></i><div style="margin-top:8px; font-size:0.8rem; color:var(--accent);">AI가 정보를 분석 중입니다...</div>';
+    area.style.pointerEvents = 'none';
+
+    const formData = new FormData();
+    formData.append('biz_image', input.files[0]);
+
+    try {
+        const res = await fetch('/api/auth/ocr-business', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await res.json();
+
+        if (result.success && result.data) {
+            const d = result.data;
+            // 자동 입력 (있을 때만)
+            if (d.name) document.getElementById('store_name').value = d.name;
+            if (d.ceo_name) document.getElementById('full_name').value = d.ceo_name; // Step 1 필드도 업데이트
+            
+            // 시각적 피드백
+            area.innerHTML = '<i class="fa-solid fa-check-circle" style="font-size:1.5rem; color:var(--success);"></i><div style="margin-top:8px; font-size:0.8rem; color:var(--success);">분석 완료! 정보가 자동 입력되었습니다.</div>';
+            
+            // 하단에 숨겨진 필드들도 있다면 업데이트 (예: 사업자번호)
+            // 여기서는 매장명을 기반으로 슬러그 추천 시스템도 가동
+            if (d.name && !document.getElementById('store_slug').value) {
+                const slugInput = document.getElementById('store_slug');
+                // 한글 매장명을 영문 슬러그로 변환 시도 (간소화)
+                const suggested = d.name.replace(/[^가-힣a-zA-Z0-9]/g, '').substr(0, 10);
+                // slugInput.value = suggested; // 필요 시 자동 입력
+            }
+        } else {
+            alert('분석에 실패했습니다. 사진을 다시 찍어주시거나 직접 입력해 주세요.');
+            area.innerHTML = originalContent;
+        }
+    } catch (e) {
+        console.error(e);
+        area.innerHTML = originalContent;
+    } finally {
+        area.style.pointerEvents = 'auto';
+    }
+}
+
+// ── Form Submit Guard ──
+document.getElementById('registerForm').addEventListener('submit', function (e) {
+    const slug = document.getElementById('store_slug').value;
+    if (!slug) { e.preventDefault(); alert('매장 URL 코드를 입력해 주세요.'); return; }
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 처리 중...';
+});
+</script>
+</body>
+</html>

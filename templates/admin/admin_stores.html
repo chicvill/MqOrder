@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>전체 매장 현황 - Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #050a14;
+            --card-bg: rgba(20, 30, 50, 0.7);
+            --accent: #00f2ff;
+            --text-primary: #ffffff;
+            --text-secondary: #a0aec0;
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        header {
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--glass-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(5, 10, 20, 0.8);
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 0.6rem 1rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .page-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.2rem;
+            margin: 0;
+        }
+
+        main {
+            padding: 1.5rem;
+            max-width: 600px; /* Mobile focused width */
+            margin: 0 auto;
+        }
+
+        .store-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .store-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 1.5rem;
+            border: 1px solid var(--glass-border);
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .store-info h3 {
+            margin: 0 0 0.4rem 0;
+            font-size: 1.1rem;
+        }
+
+        .store-info p {
+            margin: 0;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .status-badge {
+            padding: 0.3rem 0.8rem;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-active { background: rgba(0, 242, 255, 0.1); color: var(--accent); border: 1px solid var(--accent); }
+        .status-inactive { background: rgba(255, 100, 100, 0.1); color: #ff6464; border: 1px solid #ff6464; }
+
+        .btn-manage {
+            background: var(--accent);
+            color: black;
+            padding: 0.5rem;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 1.2rem;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        footer {
+            padding: 2rem;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="/portal/home" class="back-btn"><i class="fa-solid fa-arrow-left"></i> 이전</a>
+        <h1 class="page-title">전체 매장 현황</h1>
+    </header>
+
+    <main>
+        <div class="store-grid">
+            {% for store in stores %}
+            <div class="store-card">
+                <div class="store-info">
+                    <h3>{{ store.name }}</h3>
+                    <p>ID: {{ store.id }} | {{ store.ceo_name or '점주미등록' }}</p>
+                    <div style="margin-top: 10px;">
+                        <span class="status-badge {% if store.status == 'active' %}status-active{% else %}status-inactive{% endif %}">
+                            {{ store.status }}
+                        </span>
+                    </div>
+                </div>
+                <div class="action-zone">
+                    <a href="https://free.chicvill.store/admin/manage/{{ store.id }}" class="btn-manage" title="관리">
+                        <i class="fa-solid fa-gear"></i>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+            
+            {% if not stores %}
+            <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                <i class="fa-solid fa-store-slash" style="font-size: 3rem; margin-bottom: 1rem; display: block;"></i>
+                등록된 매장이 없습니다.
+            </div>
+            {% endif %}
+        </div>
+    </main>
+
+    <footer>
+        &copy; 2026 MQnet Admin Mobile
+    </footer>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQnet Central | 직원 교육 매뉴얼</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        :root {
+            --bg: #0b1120;
+            --card: rgba(30, 41, 59, 0.4);
+            --border: rgba(255, 255, 255, 0.08);
+            --primary: #3b82f6;
+            --text: #f1f5f9;
+        }
+        body { 
+            background: var(--bg); color: var(--text); font-family: 'Pretendard', sans-serif; 
+            margin: 0; min-height: 100vh;
+            background-image: radial-gradient(circle at 50% 0%, rgba(14, 165, 233, 0.1) 0%, transparent 50%);
+        }
+
+        /* Full Width Header */
+        .manual-top-bar {
+            padding: 20px 40px; border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(11, 17, 32, 0.8); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 100;
+        }
+        .logo-text { font-size: 1.2rem; font-weight: 900; color: #fff; letter-spacing: -0.5px; }
+        .btn-back { 
+            display: inline-flex; align-items: center; gap: 8px; color: #94a3b8; 
+            text-decoration: none; font-weight: 700; font-size: 0.85rem; 
+            padding: 8px 16px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); transition: 0.2s;
+        }
+        .btn-back:hover { color: #fff; background: var(--primary); border-color: var(--primary); }
+
+        /* Centered Manual Body */
+        .main-content { padding: 4rem 2rem; max-width: 1000px; margin: 0 auto; }
+        .manual-container { 
+            background: var(--card); border: 1px solid var(--border); border-radius: 32px; 
+            padding: 4rem; line-height: 1.9; box-shadow: 0 30px 60px rgba(0,0,0,0.3); backdrop-filter: blur(20px);
+        }
+        
+        /* Markdown Styling - High Fidelity */
+        #manual-content h1 { font-weight: 900; font-size: 2.2rem; color: #fff; border-bottom: 3px solid var(--primary); padding-bottom: 20px; margin-bottom: 3rem; }
+        #manual-content h2 { font-weight: 800; font-size: 1.5rem; margin-top: 3.5rem; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+        #manual-content h2::before { content: ''; width: 4px; height: 24px; background: var(--primary); border-radius: 10px; }
+        #manual-content p { color: #cbd5e1; font-size: 1.1rem; }
+        #manual-content table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 30px 0; border-radius: 16px; overflow: hidden; border: 1px solid var(--border); }
+        #manual-content th, #manual-content td { padding: 16px; text-align: left; border-bottom: 1px solid var(--border); }
+        #manual-content th { background: rgba(59, 130, 246, 0.1); color: var(--primary); font-weight: 800; font-size: 0.85rem; text-transform: uppercase; }
+        #manual-content td { background: rgba(255,255,255,0.02); }
+        #manual-content ul { padding-left: 20px; list-style-type: none; }
+        #manual-content li { position: relative; margin-bottom: 12px; padding-left: 20px; color: #cbd5e1; }
+        #manual-content li::before { content: '•'; position: absolute; left: 0; color: var(--primary); font-weight: bold; }
+        #manual-content code { background: rgba(59, 130, 246, 0.15); padding: 3px 8px; border-radius: 6px; color: var(--primary); font-weight: 700; font-family: monospace; }
+        
+        @media (max-width: 768px) {
+            .manual-container { padding: 2rem; border-radius: 20px; }
+            .manual-top-bar { padding: 15px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <header class="manual-top-bar">
+        <div class="logo-text">MQnet <span style="color:var(--primary);">Central Manual</span></div>
+        <a href="/admin" class="btn-back"><i data-lucide="arrow-left" size="16"></i> 대시보드로 복귀</a>
+    </header>
+
+    <div class="main-content">
+        <div class="manual-container">
+            <!-- 마크다운 데이터를 안전하게 담아두는 곳 -->
+            <textarea id="markdown-data" style="display:none;">{{ content | safe }}</textarea>
+            
+            <div id="manual-content">
+                <!-- 마크다운 렌더링 결과가 여기에 표시됩니다 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        const rawContent = document.getElementById('markdown-data').value;
+        const renderer = new marked.Renderer();
+        document.getElementById('manual-content').innerHTML = marked.parse(rawContent);
+    </script>
+</body>
+</html>

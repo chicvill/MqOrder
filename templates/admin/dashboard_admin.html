@@ -1,0 +1,219 @@
+{% extends "admin/base.html" %}
+{% set active_page = 'dashboard' %}
+
+{% block title %}Admin Control Center | MQnet Central{% endblock %}
+
+{% block extra_style %}
+<style>
+    :root {
+        --glass-panel: rgba(15, 23, 42, 0.7);
+        --glass-border: rgba(255, 255, 255, 0.08);
+        --neon-primary: #3b82f6;
+        --neon-success: #10b981;
+        --neon-warning: #f59e0b;
+    }
+
+    .dashboard-wrapper { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1); max-width: 1300px; margin: 0 auto; }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Performance Metrics */
+    .hero-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .hero-card { 
+        background: var(--glass-panel); backdrop-filter: blur(20px); border: 1px solid var(--glass-border);
+        border-radius: 24px; padding: 1.5rem; position: relative; transition: all 0.3s;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden;
+    }
+    .hero-card:hover { transform: translateY(-3px); border-color: var(--neon-primary); }
+    
+    .hero-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); }
+    .hero-value { font-size: 1.8rem; font-weight: 900; font-family: 'Outfit', sans-serif; letter-spacing: -1px; margin-bottom: 2px; }
+    .hero-label { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+    /* System Tree Grid (High Density) */
+    .system-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 2.5rem; }
+    .system-group { 
+        background: var(--glass-panel); border: 1px solid var(--glass-border); border-radius: 20px; padding: 1.5rem;
+    }
+    .group-title { display: flex; align-items: center; gap: 10px; margin-bottom: 1.2rem; color: var(--neon-primary); font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; }
+    .menu-list { list-style: none; padding: 0; display: grid; gap: 8px; }
+    .menu-link { 
+        text-decoration: none; color: var(--text-dim); font-size: 0.85rem; display: flex; align-items: center; gap: 10px; font-weight: 600;
+        padding: 10px 14px; border-radius: 12px; background: rgba(0,0,0,0.1); border: 1px solid transparent; transition: 0.2s;
+    }
+    .menu-link:hover { color: #fff; background: rgba(255,255,255,0.03); border-color: var(--glass-border); transform: translateX(5px); }
+    .menu-link i { opacity: 0.6; color: var(--neon-primary); }
+
+    /* Live Control Panel */
+    .store-control-card { background: var(--glass-panel); border: 1px solid var(--glass-border); border-radius: 24px; padding: 1.5rem; }
+    .store-row { 
+        display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 1.2rem;
+        background: rgba(0,0,0,0.2); border-radius: 16px; border: 1px solid var(--glass-border); margin-bottom: 8px;
+        transition: 0.15s;
+    }
+    .store-row:hover { border-color: var(--neon-primary); background: rgba(59, 130, 246, 0.05); }
+    .status-indicator { width: 6px; height: 6px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+
+    .quick-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: #fff; padding: 8px; border-radius: 10px; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+    .quick-btn:hover { background: var(--neon-primary); border-color: var(--neon-primary); transform: translateY(-1px); }
+
+    @media (max-width: 768px) {
+        .hero-stats { grid-template-columns: 1fr; }
+        .store-row { flex-direction: column; gap: 1rem; text-align: center; }
+        .system-grid { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper">
+    <!-- Header -->
+    <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+        <div>
+            <h1 style="font-size: 1.8rem; font-weight: 950; margin:0; letter-spacing: -1px;">MQnet <span style="color:var(--neon-primary);">Central Node</span></h1>
+            <p style="color: var(--text-dim); margin-top: 4px; font-size: 0.85rem; font-weight: 600;">System Architecture & Global Franchise Pipeline</p>
+        </div>
+        <div style="background: rgba(0,0,0,0.3); padding: 8px 16px; border-radius: 12px; border: 1px solid var(--glass-border);">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="status-indicator" style="color:var(--neon-success); background:var(--neon-success);"></span>
+                <span style="font-size: 0.8rem; font-weight: 800; font-family: monospace;">CORE_STABLE: {{ now.strftime('%Y-%m-%d %H:%M') if now.strftime else now }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. Performance Overview -->
+    <div class="hero-stats">
+        <div class="hero-card">
+            <div class="hero-icon"><i data-lucide="zap" style="color:var(--neon-warning);"></i></div>
+            <div class="hero-label">누적 거래 매출</div>
+            <div class="hero-value">{{ "{:,.0f}".format(total_revenue or 0) }}원</div>
+        </div>
+        <div class="hero-card">
+            <div class="hero-icon"><i data-lucide="activity" style="color:var(--neon-primary);"></i></div>
+            <div class="hero-label">처리 주문 건수</div>
+            <div class="hero-value">{{ total_orders or 0 }}건</div>
+        </div>
+        <div class="hero-card">
+            <div class="hero-icon"><i data-lucide="store" style="color:var(--neon-success);"></i></div>
+            <div class="hero-label">가맹점 인스턴스</div>
+            <div class="hero-value">{{ stores|length }}개</div>
+        </div>
+    </div>
+
+    <!-- 2. System Tree Menu -->
+    <div class="system-grid">
+        <div class="system-group">
+            <div class="group-title"><i data-lucide="target" size="14"></i> 가맹점 및 영업 전략</div>
+            <div class="menu-list">
+                <a href="/admin/stores" class="menu-link"><i data-lucide="layout-grid"></i> 가맹점 통합 인스턴스</a>
+                <a href="/admin/performance" class="menu-link"><i data-lucide="bar-chart-3"></i> 영업 파트너별 기여도 분석</a>
+                <!-- 신규 가맹점 전용 등록 페이지로 연결 -->
+                <a href="/admin/stores/add" class="menu-link" style="color:var(--neon-success);"><i data-lucide="plus-circle"></i> 신규 가맹점 등록/제안 지원</a>
+                <a href="/admin/stores" class="menu-link"><i data-lucide="qr-code"></i> 테이블 QR 매칭 시스템</a>
+            </div>
+        </div>
+        <div class="system-group">
+            <div class="group-title"><i data-lucide="users-2" size="14"></i> 인력 및 자산 통제</div>
+            <div class="menu-list">
+                <a href="/admin/users" class="menu-link"><i data-lucide="user-plus"></i> 마스터 계정 및 승인 권한</a>
+                <a href="/admin/staff" class="menu-link"><i data-lucide="coins"></i> 현장 정산 및 시급 알고리즘</a>
+                <a href="/admin/billing" class="menu-link"><i data-lucide="credit-card"></i> 플랫폼 구독 및 결제 관리</a>
+            </div>
+        </div>
+        <div class="system-group">
+            <div class="group-title"><i data-lucide="cog" size="14"></i> 시스템 환경 설정</div>
+            <div class="menu-list">
+                <a href="/admin/settings" class="menu-link"><i data-lucide="shield-check"></i> 전역 보안 및 접근 정책</a>
+                <a href="/admin/manual/staff" class="menu-link"><i data-lucide="book-open"></i> 관리자 실무 교육 매뉴얼</a>
+                <a href="/profile" class="menu-link"><i data-lucide="fingerprint"></i> 내 관리자 프로필 설정</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. 실시간 가맹점 제어 패널 -->
+    <div class="store-control-card">
+        <h3 style="margin:0 0 1.2rem 0; font-size: 0.9rem; color: #fff; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="monitor-play" style="color:var(--neon-success);"></i> LIVE OPERATION CLUSTER
+        </h3>
+        
+        <div style="display: grid; gap: 8px;">
+            {% for store in stores %}
+            <div class="store-row">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div class="status-indicator" style="color:var(--neon-success); background:var(--neon-success);"></div>
+                    <div>
+                        <div style="font-weight: 800; font-size: 0.950rem; color: #fff;">{{ store.name }}</div>
+                        <div style="font-size: 0.65rem; color: var(--text-dim); font-family: monospace;">NODE_{{ store.id }}</div>
+                    </div>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <a href="/{{ store.id }}/counter" target="_blank" class="quick-btn" title="포스 전광판"><i data-lucide="layout-dashboard" size="16"></i></a>
+                    <a href="/{{ store.id }}/kitchen" target="_blank" class="quick-btn" title="주방 관제"><i data-lucide="chef-hat" size="16"></i></a>
+                    <button onclick="openPartnerModal('{{ store.id }}', '{{ store.name }}')" class="quick-btn" style="background:rgba(59, 130, 246, 0.1);" title="파트너 매칭">
+                        <i data-lucide="link-2" size="16"></i>
+                    </button>
+                    <a href="/{{ store.id }}/qr-print" target="_blank" class="quick-btn" title="QR 코드 출력">
+                        <i data-lucide="printer" size="16"></i>
+                    </a>
+                    <a href="/admin/stores/{{ store.id }}/config" class="quick-btn" style="background:var(--neon-primary); color:#fff; padding: 6px 12px;" title="환경 설정">
+                        <span style="font-size: 0.7rem; font-weight: 800;">CONFIG</span>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Partner Modal -->
+<div id="partner-modal-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:15000; display:none; justify-content:center; align-items:center; backdrop-filter:blur(8px);">
+    <div style="background:#0f172a; border:1px solid var(--glass-border); border-radius:24px; width:360px; overflow:hidden;">
+        <div style="padding:1.5rem; border-bottom:1px solid var(--glass-border);">
+            <div style="font-size:0.6rem; color:var(--neon-primary); font-weight:800; letter-spacing:1px; margin-bottom:5px;">NODE ASSIGNMENT</div>
+            <h3 id="modal-store-name" style="margin:0; font-size:1.1rem; font-weight:800;">Store Node</h3>
+        </div>
+        <div style="padding:1rem; max-height:300px; overflow-y:auto;">
+            <button onclick="assignPartner(null)" style="width:100%; padding:12px; background:rgba(239, 68, 68, 0.1); border:1px dashed rgba(239, 68, 68, 0.3); border-radius:12px; color:#f87171; font-weight:800; margin-bottom:10px; cursor:pointer; font-size:0.8rem;">연결 해제</button>
+            <div style="display:grid; gap:8px;">
+                {% for staff in all_staff %}
+                <button onclick="assignPartner('{{ staff.id }}')" style="width:100%; display:flex; justify-content:space-between; align-items:center; padding:12px 15px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:10px; color:#fff; cursor:pointer; text-align:left; font-size:0.85rem;">
+                    <div style="font-weight:700;">{{ staff.username }}</div>
+                    <div style="font-size:0.6rem; color:var(--text-dim);">UID_{{ staff.id[:4] }}</div>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+        <div style="padding:1rem; text-align:center;">
+            <button onclick="closePartnerModal()" style="color:var(--text-dim); background:none; border:none; font-weight:700; cursor:pointer; font-size:0.75rem;">CANCEL</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    let activeTargetStoreId = null;
+    function openPartnerModal(storeId, storeName) {
+        activeTargetStoreId = storeId;
+        document.getElementById('modal-store-name').innerText = storeName;
+        document.getElementById('partner-modal-overlay').style.display = 'flex';
+    }
+    function closePartnerModal() {
+        document.getElementById('partner-modal-overlay').style.display = 'none';
+        activeTargetStoreId = null;
+    }
+    async function assignPartner(staffId) {
+        if (!activeTargetStoreId) return;
+        try {
+            const response = await fetch('/admin/stores/assign-partner', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ store_id: activeTargetStoreId, staff_id: staffId })
+            });
+            const data = await response.json();
+            if (data.status === 'success') { location.reload(); }
+            else { alert('오류: ' + data.message); }
+        } catch (e) { alert('에러가 발생했습니다.'); }
+    }
+</script>
+{% endblock %}

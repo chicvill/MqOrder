@@ -1,0 +1,258 @@
+{% extends "admin/base.html" %}
+{% set active_page = 'users' %}
+
+{% block title %}사용자 계정 제어 | MQnet Central Admin{% endblock %}
+
+{% block extra_style %}
+<style>
+    .user-list-container { display: flex; flex-direction: column; gap: 8px; }
+    .user-row { 
+        background: rgba(30, 41, 59, 0.4); border: 1px solid var(--border); border-radius: 12px; 
+        padding: 8px 16px; display: grid; grid-template-columns: 1.5fr 2fr 1.5fr 1fr 1fr 1.2fr;
+        align-items: center; transition: 0.3s;
+    }
+    .user-row:hover { background: rgba(30, 41, 59, 0.7); border-color: var(--primary-soft); transform: scale(1.002); }
+    
+    .user-id-box { display: flex; align-items: center; gap: 14px; }
+    .user-avatar { width: 30px; height: 30px; border-radius: 10px; background: var(--primary-soft); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 0.8rem; }
+    .user-id-text { font-weight: 800; font-size: 0.95rem; letter-spacing: -0.3px; color: white; }
+
+    .name-phone-box { color: var(--text-dim); font-size: 0.8rem; font-weight: 600; line-height: 1.3; }
+    
+    .role-badge { 
+        padding: 4px 10px; border-radius: 8px; font-size: 0.7rem; font-weight: 800; 
+        display: inline-flex; align-items: center; gap: 6px; width: fit-content;
+    }
+    .role-admin { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+    .role-owner { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .role-manager { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+    .role-staff { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+    .role-worker { background: rgba(100, 116, 139, 0.15); color: #94a3b8; }
+
+    .status-active { color: var(--accent); font-size: 0.75rem; font-weight: 800; display: flex; align-items: center; gap: 5px; }
+
+    .action-btn { 
+        background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-dim);
+        padding: 6px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: 0.2s;
+        display: inline-flex; align-items: center; gap: 6px;
+    }
+    .action-btn:hover { background: var(--primary); color: white; border-color: var(--primary); transform: translateY(-2px); }
+    .btn-delete { color: var(--danger); }
+    .btn-delete:hover { background: var(--danger); border-color: var(--danger); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="header" style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: flex-end;">
+    <div>
+        <h1 style="margin:0; font-size:1.4rem; letter-spacing:-1px; text-transform:uppercase;">User Infrastructure</h1>
+        <p style="margin:0; font-size:0.75rem; color:var(--text-dim); font-weight:600;">글로벌 사용자 계정 및 접근 권한 중앙 제어</p>
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div style="margin-bottom:20px;">
+        {% for category, message in messages %}
+          <div class="alert-box alert-{{ 'success' if category == 'success' else 'error' }}">
+              <i data-lucide="{{ 'check-circle' if category == 'success' else 'alert-circle' }}"></i> {{ message }}
+          </div>
+        {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+<!-- 1. 승인 대기 명단 (하이엔드 리스트) -->
+{% set pending = users|rejectattr('is_approved')|list %}
+{% if pending %}
+<div class="card" style="border-color: var(--warning); background: rgba(245, 158, 11, 0.03);">
+    <h3 style="margin:0 0 1.5rem 0; font-size:0.85rem; color:var(--warning); text-transform:uppercase; letter-spacing:1px;"><i data-lucide="clock" size="16"></i> Pending Approval ({{ pending|length }})</h3>
+    <div class="user-list-container">
+        {% for user in pending %}
+        <div class="user-row" style="grid-template-columns: 1fr 2fr 1fr 1fr;">
+            <div class="user-id-box">
+                <div class="user-avatar" style="background:rgba(245, 158, 11, 0.1); color:var(--warning);">{{ user.username[0]|upper }}</div>
+                <div class="user-id-text">{{ user.username }}</div>
+            </div>
+            <div class="name-phone-box">
+                <span style="color:white; font-weight:900;">{{ user.full_name or '미확인 성명' }}</span><br>
+                {{ user.phone or '연락처 미등록' }}
+            </div>
+            <div class="role-badge role-{{ user.role }}"><i data-lucide="shield"></i> {{ user.role.upper() }}</div>
+            <div style="display:flex; gap:6px; justify-content:flex-end; align-items:center;">
+                <form action="/admin/users/{{ user.id }}/approve" method="POST">
+                    <button type="submit" class="action-btn" style="background:var(--accent); color:white; border-color:var(--accent);"><i data-lucide="check-check"></i> 가입 승인</button>
+                </form>
+                <form action="/admin/users/{{ user.id }}/delete" method="POST" onsubmit="return confirm('이 신청을 정말 삭제(거절)하시겠습니까?');">
+                    <button type="submit" class="action-btn btn-delete" style="padding: 6px; border-radius: 8px;"><i data-lucide="trash-2" size="16"></i></button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- 2. 신규 생성 폼 (컴팩트 카드) -->
+<div class="card" style="padding: 1rem 1.2rem; margin-bottom: 1.5rem;">
+    <h3 style="margin:0 0 1rem 0; font-size:0.75rem; color:var(--primary); text-transform:uppercase; letter-spacing:1px;"><i data-lucide="plus-circle" size="14"></i> Create Partner Account</h3>
+    <form action="/admin/users" method="POST" class="form-grid" style="grid-template-columns: 1fr 1fr 1fr auto; gap: 10px;">
+        <input type="text" name="username" placeholder="접속 ID" required>
+        <input type="password" name="password" placeholder="임시 PW" required>
+        <select name="role">
+            <option value="staff" selected>제휴 파트너</option>
+            <option value="owner">가맹점주</option>
+            <option value="manager">관리자</option>
+        </select>
+        <button type="submit" class="btn-add" style="padding:10px 24px; font-size:0.85rem;">직접 생성</button>
+    </form>
+</div>
+
+<!-- 3. 활성 사용자 (프리미엄 리스트) -->
+<div class="user-list-container">
+    <div style="display:grid; grid-template-columns: 1.5fr 2fr 1.5fr 1fr 1fr 1.2fr; padding: 0 24px 8px; font-size: 0.7rem; color: var(--text-dim); text-transform:uppercase; letter-spacing:1px; font-weight:800;">
+        <div>User Identity</div>
+        <div>Contact / Bio</div>
+        <div>Structure Role</div>
+        <div>System</div>
+        <div>Store</div>
+        <div style="text-align:right;">Management</div>
+    </div>
+    {% for user in users if user.is_approved %}
+    <div class="user-row">
+        <div class="user-id-box">
+            <div class="user-avatar">{{ user.username[0]|upper }}</div>
+            <div class="user-id-text">{{ user.username }}</div>
+        </div>
+        <div class="name-phone-box">
+            <span style="color:white; font-weight:800;">{{ user.full_name or '이름 없음' }}</span><br>
+            {{ user.phone|format_phone }}
+        </div>
+        <div>
+            <div class="role-badge role-{{ user.role }}">
+                <i data-lucide="{{ 'shield' if user.role=='admin' else 'home' if user.role=='owner' else 'award' if user.role=='manager' else 'users' if user.role=='staff' else 'briefcase' }}"></i>
+                {% if user.role == 'admin' %}Global Admin
+                {% elif user.role == 'owner' %}Shop Owner
+                {% elif user.role == 'manager' %}Manager
+                {% elif user.role == 'staff' %}Partner
+                {% elif user.role == 'worker' %}Worker
+                {% else %}{{ user.role.upper() }}{% endif %}
+            </div>
+        </div>
+        <div class="status-active"><i data-lucide="check-circle" size="14"></i> LIVE</div>
+        <div style="font-size:0.85rem; font-weight:700; color:var(--text-dim);">{{ user.store_id or 'GLOBAL' }}</div>
+        <div style="text-align:right; display:flex; justify-content:flex-end; gap:8px;">
+            <button class="action-btn" title="Edit Info"
+                data-id="{{ user.id }}"
+                data-username="{{ user.username }}"
+                data-role="{{ user.role }}"
+                data-store="{{ user.store_id or '' }}"
+                data-fullname="{{ user.full_name or '' }}"
+                data-phone="{{ user.phone or '' }}"
+                data-rate="{{ user.hourly_rate or 10000 }}"
+                onclick="openEditModal(this.dataset.id, this.dataset.username, this.dataset.role, this.dataset.store, this.dataset.fullname, this.dataset.phone, this.dataset.rate)">
+                <i data-lucide="edit-3" size="14"></i>
+            </button>
+            <form action="/admin/users/{{ user.id }}/delete" method="POST" style="display:inline;" onsubmit="return confirm('계정을 영구 삭제합니까?')">
+                <button type="submit" class="action-btn btn-delete" title="Delete Account">
+                    <i data-lucide="trash-2" size="16"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- 사용자 수정 모달 -->
+<div id="edit-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10001; align-items:center; justify-content:center; backdrop-filter:blur(12px);">
+    <div style="background:var(--card); border:1px solid var(--border); border-radius:28px; padding:2.5rem; width:100%; max-width:440px; box-shadow:0 25px 50px rgba(0,0,0,0.5); position:relative;">
+        <button onclick="closeEditModal()" style="position:absolute; top:20px; right:20px; background:none; border:none; color:var(--text-dim); cursor:pointer;"><i data-lucide="x" size="20"></i></button>
+        
+        <div style="font-size:0.75rem; color:var(--primary); font-weight:800; letter-spacing:1px; margin-bottom:8px; text-transform:uppercase;">Account Synchronization</div>
+        <h3 id="edit-username" style="margin:0 0 1.8rem 0; color:white; font-size:1.5rem; letter-spacing:-0.5px;">User Info Edit</h3>
+        
+        <div style="display:grid; gap:20px;">
+            <div class="form-group">
+                <label style="font-size:0.8rem; color:var(--text-dim); display:block; margin-bottom:8px; font-weight:600;">Access Hierarchy (Role)</label>
+                <select id="edit-role" style="background:rgba(255,255,255,0.03); border:1px solid var(--border); color:white; padding:12px; border-radius:12px; width:100%; font-size:0.9rem; font-weight:600;">
+                    <option value="admin">Global Admin</option>
+                    <option value="owner">Shop Owner</option>
+                    <option value="manager">Manager</option>
+                    <option value="staff">Partner</option>
+                    <option value="worker">Worker</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label style="font-size:0.8rem; color:var(--text-dim); display:block; margin-bottom:8px; font-weight:600;">Store Association</label>
+                <select id="edit-store" style="background:rgba(255,255,255,0.03); border:1px solid var(--border); color:white; padding:12px; border-radius:12px; width:100%; font-size:0.9rem; font-weight:600;">
+                    <option value="">(Global) No Specific Store</option>
+                    {% for s in stores %}<option value="{{ s.id }}">{{ s.name }} ({{ s.id }})</option>{% endfor %}
+                </select>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div class="form-group">
+                    <label style="font-size:0.8rem; color:var(--text-dim); display:block; margin-bottom:8px; font-weight:600;">Full Name</label>
+                    <input id="edit-fullname" type="text" readonly style="background:rgba(255,255,255,0.02); border:1px solid var(--border); color:rgba(255,255,255,0.3); padding:12px; border-radius:12px; width:100%; cursor:not-allowed; font-size:0.9rem;">
+                </div>
+                <div class="form-group">
+                    <label style="font-size:0.8rem; color:var(--text-dim); display:block; margin-bottom:8px; font-weight:600;">Contact</label>
+                    <input id="edit-phone" type="text" readonly style="background:rgba(255,255,255,0.02); border:1px solid var(--border); color:rgba(255,255,255,0.3); padding:12px; border-radius:12px; width:100%; cursor:not-allowed; font-size:0.9rem;">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label style="font-size:0.8rem; color:var(--text-dim); display:block; margin-bottom:8px; font-weight:600;">Configurable Commission / Rate (KRW)</label>
+                <input id="edit-rate" type="number" style="background:rgba(255,255,255,0.03); border:1px solid var(--border); color:white; padding:12px; border-radius:12px; width:100%; font-weight:800; font-size:1.1rem; letter-spacing:0.5px;">
+            </div>
+        </div>
+
+        <div style="display:flex; gap:12px; margin-top:2.5rem;">
+            <button onclick="saveUser()" style="flex:1.5; background:var(--primary); color:white; border:none; padding:15px; border-radius:14px; font-weight:900; font-size:1rem; cursor:pointer; box-shadow:0 10px 25px var(--primary-soft);">Update Data</button>
+            <button onclick="closeEditModal()" style="flex:1; background:var(--border); color:white; border:none; padding:15px; border-radius:14px; font-weight:700; cursor:pointer;">Cancel</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    let editUserId = null;
+
+    function openEditModal(id, username, role, storeId, fullName, phone, hourlyRate) {
+        editUserId = id;
+        document.getElementById('edit-username').innerText = '📝 ' + username;
+        document.getElementById('edit-role').value = role;
+        document.getElementById('edit-store').value = storeId;
+        document.getElementById('edit-fullname').value = fullName;
+        document.getElementById('edit-phone').value = phone;
+        document.getElementById('edit-rate').value = hourlyRate;
+        document.getElementById('edit-modal').style.display = 'flex';
+    }
+
+    function closeEditModal() {
+        document.getElementById('edit-modal').style.display = 'none';
+    }
+
+    async function saveUser() {
+        const payload = {
+            role: document.getElementById('edit-role').value,
+            store_id: document.getElementById('edit-store').value,
+            hourly_rate: parseInt(document.getElementById('edit-rate').value) || 10000
+        };
+        const res = await fetch(`/admin/users/${editUserId}/update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            alert('변경 사항이 성공적으로 저장되었습니다!');
+            location.reload();
+        } else {
+            alert('오류가 발생했습니다: ' + (data.message || '저장 실패'));
+        }
+    }
+</script>
+{% endblock %}

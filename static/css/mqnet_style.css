@@ -1,0 +1,138 @@
+:root {
+  /* MQnet Premium Design Tokens */
+  --mq-navy: #0F172A;
+  --mq-green: #10B981;
+  --mq-gold: #F59E0B;
+  --mq-sky: #3B82F6;
+  
+  --mq-bg: #0B1120;
+  --mq-card: rgba(30, 41, 59, 0.7);
+  --mq-border: rgba(255, 255, 255, 0.08);
+  --mq-text-main: #F8FAFC;
+  --mq-text-sub: #94A3B8;
+  
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 32px;
+  
+  --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 20px rgba(16, 185, 129, 0.2);
+  
+  --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Global Reset & Typography */
+body {
+  background-color: var(--mq-bg);
+  background-image: 
+    radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, #0B1120 0%, #020617 100%);
+  color: var(--mq-text-main);
+  font-family: 'Outfit', 'Inter', -apple-system, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Premium Glass Container */
+.mq-card {
+  background: var(--mq-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--mq-border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  box-shadow: var(--shadow-md);
+  transition: var(--transition);
+}
+
+.mq-card:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+}
+
+/* MQnet Interactive Buttons */
+.mq-btn-primary {
+  background: linear-gradient(135deg, var(--mq-sky), #1D4ED8);
+  color: white;
+  padding: 14px 28px;
+  border-radius: var(--radius-md);
+  border: none;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+}
+
+.mq-btn-primary:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.4);
+  filter: brightness(1.1);
+}
+
+.mq-btn-outline {
+  background: transparent;
+  border: 1.5px solid var(--mq-border);
+  color: var(--mq-text-main);
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  transition: var(--transition);
+}
+
+.mq-btn-outline:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--mq-text-sub);
+}
+
+/* Status Accents */
+.mq-accent-green {
+  color: var(--mq-green);
+  text-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+.mq-badge {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Premium Mobile Navigation */
+.mobile-nav-bottom {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  height: 70px;
+  background: rgba(30, 41, 59, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 1000;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-out forwards;
+}

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ store.name }} - 점주용 매뉴얼</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body { background: #0f172a; color: white; font-family: 'Pretendard', sans-serif; margin: 0; padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { font-size: 1.5rem; color: #3b82f6; margin-bottom: 5px; }
+
+        .guide-card { background: #1e293b; border-radius: 20px; padding: 25px; margin-bottom: 15px; display: flex; align-items: flex-start; gap: 15px; border: 1px solid #334155; }
+        .step-num { background: #3b82f6; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0; }
+        .guide-info h3 { margin: 0 0 8px 0; font-size: 1.1rem; color: #f1f5f9; }
+        .guide-info p { margin: 0; font-size: 0.9rem; color: #94a3b8; line-height: 1.5; }
+        
+        .action-link { display: inline-flex; align-items: center; gap: 8px; color: #3b82f6; text-decoration: none; margin-top: 10px; font-weight: 700; font-size: 0.95rem; }
+        
+        .footer { text-align: center; margin-top: 40px; color: #475569; font-size: 0.8rem; }
+        .quick-btn { background: #334155; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 15px; border-radius: 12px; color: white; text-decoration: none; font-weight: 700; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <i data-lucide="book-open" size="48" style="color:#3b82f6; margin-bottom:10px;"></i>
+            <h1>매장 운영 핵심 가이드</h1>
+            <p style="color:#64748b; font-size:0.9rem;">{{ store.name }} 점주님 반갑습니다!</p>
+        </div>
+
+        <div class="guide-card">
+            <div class="step-num">1</div>
+            <div class="guide-info">
+                <h3>매장 오픈하기 (카운터)</h3>
+                <p>매장 문을 열면 태블릿에서 '카운터' 화면을 켜주세요. 여기서 모든 주문과 결제를 관리합니다.</p>
+                <a href="/{{ store.id }}/counter" class="action-link">카운터 바로가기 <i data-lucide="external-link" size="14"></i></a>
+            </div>
+        </div>
+
+        <div class="guide-card">
+            <div class="step-num">2</div>
+            <div class="guide-info">
+                <h3>주방 연동하기</h3>
+                <p>주방용 태블릿에는 '주방' 화면을 띄워주세요. 주문이 들어오면 알림 벨소리가 울립니다.</p>
+                <a href="/{{ store.id }}/kitchen" class="action-link">주방 화면 바로가기 <i data-lucide="external-link" size="14"></i></a>
+            </div>
+        </div>
+
+        <div class="guide-card">
+            <div class="step-num">3</div>
+            <div class="guide-info">
+                <h3>메뉴 사진 및 가격 수정</h3>
+                <p>메뉴 수정 및 시스템 설정은 본사 관리자 승인이 필요합니다. 변경 사항이 있을 경우 아래 고객센터로 요청해 주세요.</p>
+                <div style="font-size: 0.85rem; color: #3b82f6; margin-top: 5px; font-weight: bold;">
+                    * 본사 통합 관리자 전용 기능입니다.
+                </div>
+            </div>
+        </div>
+
+        <div class="guide-card">
+            <div class="step-num">4</div>
+            <div class="guide-info">
+                <h3>이용료 및 구독 관리</h3>
+                <div style="margin-top: 10px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.2);">
+                    <div style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 4px;">정식 유료 서비스 개시일</div>
+                    <div style="font-size: 1.1rem; font-weight: 800; color: #f1f5f9; margin-bottom: 6px;">
+                        {{ (store.created_at + timedelta(days=30)).strftime('%Y년 %m월 %d일') }}
+                    </div>
+                    <div style="font-size: 0.75rem; color: #10b981; font-weight: 900; margin-bottom: 15px;">
+                        <i data-lucide="gift" size="12"></i> 첫 1개월 무료 체험 혜택이 적용되었습니다.
+                    </div>
+                    <div style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 4px;">예상 월 서비스 이용료</div>
+                    <div style="font-size: 1.1rem; font-weight: 800; color: #3b82f6;">
+                        {{ "{:,.0f}".format(store.monthly_fee or 50000) }}원 <span style="font-size:0.8rem; font-weight:normal; color:#94a3b8;">/ 익월부터 과금</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 개인정보 활용 및 서비스 사용 승인 섹션 -->
+        <div style="background: rgba(16, 185, 129, 0.05); border: 1px dashed rgba(16, 185, 129, 0.3); border-radius: 20px; padding: 25px; margin-top: 20px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                <i data-lucide="shield-check" style="color:#10b981;"></i>
+                <h3 style="margin:0; font-size:1.1rem; color:#10b981;">서비스 사용 계약 및 정보 활용 동의</h3>
+            </div>
+            <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.6; margin-bottom: 15px;">
+                세금계산서 발행 및 원활한 앱 서비스를 위해 저장된 <b>사업자정보 및 개인정보</b> 활용에 동의하십니까? 아래 버튼을 누르면 승인이 완료되며 매장 관리 서비스로 이동합니다.
+            </p>
+            <button onclick="confirmAgreement()" id="agreeBtn" style="width:100%; padding:16px; background:#10b981; border:none; border-radius:10px; color:white; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-size:1rem; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);">
+                <i data-lucide="check-circle" size="20"></i> 동의하고 서비스 시작하기
+            </button>
+        </div>
+
+        <a href="tel:01012345678" class="quick-btn">
+            <i data-lucide="phone-call"></i> 긴급 기술지원 전화하기
+        </a>
+
+        <script>
+            function confirmAgreement() {
+                const btn = document.getElementById('agreeBtn');
+                btn.style.background = '#059669';
+                btn.innerHTML = '<i data-lucide="loader" class="spin" size="20"></i> 승인 처리 중...';
+                btn.disabled = true;
+                
+                setTimeout(() => {
+                    alert("사용 승인이 완료되었습니다.\n첫 1개월 무료 체험 혜택과 함께 서비스를 시작합니다.");
+                    // 매장 대시보드(통합 관리 홈)로 이동
+                    location.href = "/{{ store.id }}";
+                }, 800);
+            }
+        </script>
+
+        <style>
+            .spin { animation: spin 1s linear infinite; }
+            @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+            
+            .pulse-btn {
+                background: #334155;
+                animation: pulse 2s infinite;
+                transition: 0.3s;
+            }
+            .pulse-btn:hover { background: #475569; transform: scale(1.02); }
+            @keyframes pulse {
+                0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+                70% { box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); }
+                100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+            }
+        </style>
+
+        <div class="footer">
+            2026 MQnet Integrated Ordering Solutions<br>
+            Designed for Ease and Simplicity
+        </div>
+    </div>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

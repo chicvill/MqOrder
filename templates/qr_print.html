@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ store.name }} - QR 코드 인쇄</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap">
+    <style>
+        :root {
+            --royal-red: #8B0000;
+            --royal-gold: #D4AF37;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f0f0f0;
+        }
+        
+        /* 인쇄 가이드 라인 (화면에서만 보임) */
+        .print-container {
+            width: 210mm; /* A4 Width */
+            margin: 20px auto;
+            background: white;
+            padding: 10mm;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .qr-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* 2열 */
+            gap: 8mm;
+            row-gap: 8mm;
+        }
+
+        .qr-card {
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 10px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            page-break-inside: avoid;
+            background: linear-gradient(145deg, #ffffff, #f1f5f9);
+            height: 52mm;
+            position: relative;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        .mq-logo-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 30px;
+            background: white;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 12px;
+            color: #1e3a8a;
+            border: 2px solid #1e3a8a;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+
+        .qr-wrapper {
+            position: relative;
+            display: inline-block;
+            background: white;
+            padding: 5px;
+            border-radius: 8px;
+        }
+
+        .store-name {
+            font-size: 1rem;
+            font-weight: 900;
+            color: #1e293b;
+            margin-bottom: 3px;
+        }
+
+        .table-no {
+            font-size: 1.1rem;
+            font-weight: 900;
+            margin-top: 5px;
+            background: #1e293b;
+            color: #fff;
+            padding: 1px 15px;
+            border-radius: 20px;
+            letter-spacing: -0.5px;
+        }
+
+        .instruction {
+            font-size: 0.7rem;
+            color: #64748b;
+            margin-top: 3px;
+            font-weight: 600;
+        }
+
+        /* 컨트롤 패널 (인쇄 시 숨김) */
+        .controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        .btn-print {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 8px;
+        }
+
+        @media print {
+            body { background: white; }
+            .controls { display: none !important; }
+            .print-container { margin: 0; padding: 0; width: 100%; box-shadow: none; }
+            .qr-grid { gap: 4mm; }
+            /* 10개마다 페이지 넘김 (2열 5행 기준) */
+            .page-break { page-break-after: always; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <h2 style="margin:0 0 10px 0;">통합 QR 인쇄 설정</h2>
+        <p style="font-size:0.9rem; color:#666;">
+            • <b>A4 1장당 10개</b>가 출력됩니다.<br>
+            • 상단 10개는 전직원 <b>출퇴근용</b>입니다.<br>
+            • 하단은 대기/설명서/테이블용입니다.
+        </p>
+        <button class="btn-print" onclick="window.print()">인쇄 시작 (Ctrl+P)</button>
+        <div style="margin-top:10px;"><a href="/admin/staff" style="font-size:0.8rem; color:#3b82f6;">← 인력 관리로 돌아가기</a></div>
+    </div>
+
+    <div class="print-container">
+
+        <div class="qr-grid">
+            <!-- 출퇴근 QR 1 -->
+            <div class="qr-card">
+                <div class="store-name">[ 직원 출퇴근 ]</div>
+                <div class="qr-wrapper">
+                    <div id="qr-attendance-1" class="qr-placeholder"></div>
+                    <div class="mq-logo-overlay">MQ</div>
+                </div>
+                <div class="table-no">출퇴근 QR</div>
+                <div class="instruction">직원용 · 카메라 스캔</div>
+            </div>
+
+            <!-- 출퇴근 QR 2 -->
+            <div class="qr-card">
+                <div class="store-name">[ 직원 출퇴근 ]</div>
+                <div class="qr-wrapper">
+                    <div id="qr-attendance-2" class="qr-placeholder"></div>
+                    <div class="mq-logo-overlay">MQ</div>
+                </div>
+                <div class="table-no">출퇴근 QR</div>
+                <div class="instruction">직원용 · 카메라 스캔</div>
+            </div>
+
+            <!-- 대기 등록용 QR -->
+            <div class="qr-card" style="border-color: #2ecc71;">
+                <div class="store-name" style="color: #2ecc71;">[ 대기 등록 ]</div>
+                <div class="qr-wrapper">
+                    <div id="qr-waiting" class="qr-placeholder"></div>
+                    <div class="mq-logo-overlay" style="color:#2ecc71; border-color:#2ecc71;">MQ</div>
+                </div>
+                <div class="table-no" style="background: #2ecc71;">대기 신청</div>
+                <div class="instruction">입장 대기 등록 전용</div>
+            </div>
+
+            <!-- 이용 가이드 QR -->
+            <div class="qr-card" style="border-color: #1e3a8a;">
+                <div class="store-name" style="color: #1e3a8a;">[ 이용 가이드 ]</div>
+                <div class="qr-wrapper">
+                    <div id="qr-manual" class="qr-placeholder"></div>
+                    <div class="mq-logo-overlay">MQ</div>
+                </div>
+                <div class="table-no">이용 가이드</div>
+                <div class="instruction">시스템 사용법 안내</div>
+            </div>
+
+            <!-- [신규] 계좌이체 안내 QR -->
+            <div class="qr-card" style="border-color: #D4AF37;">
+                <div class="store-name" style="color: #D4AF37;">[ 계좌이체 안내 ]</div>
+                <div class="qr-wrapper">
+                    <div id="qr-bank" class="qr-placeholder"></div>
+                    <div class="mq-logo-overlay" style="color:#D4AF37; border-color:#D4AF37;">MQ</div>
+                </div>
+                <div class="table-no" style="background: #D4AF37; color: #000;">입금 QR</div>
+                <div class="instruction">스캔하여 계좌번호 확인</div>
+            </div>
+
+            <!-- [신규] 매장 WIFI 자동 접속 QR -->
+            <div class="qr-card" style="border-color: #3b82f6;">
+                <div class="store-name" style="color: #3b82f6;">[ WIFI 자동 접속 ]</div>
+                <div class="qr-wrapper">
+                    <div id="qr-wifi" class="qr-placeholder"></div>
+                    <div class="mq-logo-overlay" style="color:#3b82f6; border-color:#3b82f6;">WIFI</div>
+                </div>
+                <div class="table-no" style="background: #3b82f6;">무료 WIFI</div>
+                <div class="instruction">스캔 시 즉시 연결됩니다</div>
+            </div>
+
+            {# 테이블별 QR 반복문 #}
+            {% set table_limit = 6 if '왕궁' in store.name else (store.tables_count or 0) %}
+            {% for i in range(1, table_limit + 1) %}
+                <div class="qr-card">
+                    <div class="store-name">{{ store.name }}</div>
+                    <div class="qr-wrapper">
+                        <div id="qr-table-{{ i }}" class="qr-placeholder"></div>
+                        <div class="mq-logo-overlay">MQ</div>
+                    </div>
+                    <div class="table-no">{{ i }}번 테이블</div>
+                    <div class="instruction">스캔하여 바로 주문하기</div>
+                </div>
+
+                {# 페이지 넘김 처리 (10개 단위) #}
+                {% if (i + 4) % 10 == 0 and not loop.last %}
+                    </div>
+                    <div class="page-break"></div>
+                    <div class="qr-grid">
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = "{{ current_url }}";
+        const STORE_ID = "{{ store.id }}";
+
+        window.onload = () => {
+            const QR_CONFIG = {
+                width: 120, height: 120, 
+                colorDark : "#1e293b",
+                colorLight : "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            };
+
+            // 1. 출퇴근 QR 생성
+            [1, 2].forEach(n => {
+                const el = document.getElementById(`qr-attendance-${n}`);
+                if (el) new QRCode(el, { ...QR_CONFIG, text: `${BASE_URL}/${STORE_ID}/attendance` });
+            });
+
+            // 2. 대기/가이드 QR 생성
+            const wEl = document.getElementById("qr-waiting");
+            if (wEl) new QRCode(wEl, { ...QR_CONFIG, text: `${BASE_URL}/${STORE_ID}/waiting` });
+            const mEl = document.getElementById("qr-manual");
+            if (mEl) new QRCode(mEl, { ...QR_CONFIG, text: `${BASE_URL}/${STORE_ID}/manual` });
+            const bEl = document.getElementById("qr-bank");
+            if (bEl) new QRCode(bEl, { ...QR_CONFIG, text: `${BASE_URL.replace('http:', 'https:')}/${STORE_ID}/payment_info` });
+            
+            // WIFI QR (포맷: WIFI:T:WPA;S:SSID;P:PASSWORD;;)
+            const wifiEl = document.getElementById("qr-wifi");
+            const ssid = "{{ store.wifi_ssid or '' }}";
+            const pass = "{{ store.wifi_pw or '' }}";
+            if (wifiEl && ssid) {
+                new QRCode(wifiEl, { ...QR_CONFIG, text: `WIFI:T:WPA;S:${ssid};P:${pass};;` });
+            } else if (wifiEl) {
+                wifiEl.innerHTML = "<small style='color:#ccc'>WIFI 정보 없음</small>";
+            }
+
+            // 3. 테이블별 QR 생성
+            const tableLimit = parseInt("{{ table_limit }}") || 0;
+            for (let i = 1; i <= tableLimit; i++) {
+                const tel = document.getElementById(`qr-table-${i}`);
+                if (tel) new QRCode(tel, { ...QR_CONFIG, text: `${BASE_URL}/${STORE_ID}/customer/${i}` });
+            }
+        };
+    </script>
+</body>
+</html>

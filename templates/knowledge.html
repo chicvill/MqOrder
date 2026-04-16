@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>기술 지식 창고 - MQnet Knowledge</title>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --primary: #3b82f6;
+            --accent: #10b981;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --border: rgba(255, 255, 255, 0.1);
+            --glass: blur(10px);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.1) 0, transparent 50%);
+            color: var(--text-main);
+            font-family: 'Pretendard', sans-serif;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin: 0;
+            background: linear-gradient(to right, #3b82f6, #10b981);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
+        .btn-ghost { background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--border); }
+        .btn-ghost:hover { background: rgba(255,255,255,0.1); }
+
+        .category-tabs {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+
+        .tab {
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid var(--border);
+            color: var(--text-sub);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .card-category {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--primary);
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .card-content {
+            font-size: 0.95rem;
+            color: var(--text-sub);
+            line-height: 1.6;
+            margin-bottom: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .card-content h3 { color: var(--text-main); font-size: 1.1rem; margin-top: 15px; }
+        .card-content code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; font-family: monospace; color: #e2e8f0; }
+
+        .card-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border);
+        }
+
+        .link-tag {
+            font-size: 0.8rem;
+            color: var(--primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .link-tag:hover { text-decoration: underline; }
+
+        .card-actions {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .card:hover .card-actions { opacity: 1; }
+
+        .action-icon {
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            color: var(--text-sub);
+        }
+
+        .action-icon:hover { color: var(--text-main); background: rgba(255,255,255,0.1); }
+
+        /* Decrypt Button Style */
+        .decrypt-btn {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+            vertical-align: middle;
+            transition: all 0.2s;
+        }
+        .decrypt-btn:hover { background: var(--accent); color: white; }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: #1e293b;
+            width: 90%;
+            max-width: 800px;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 500; color: var(--text-sub); }
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+        }
+        textarea { height: 250px; font-family: 'Pretendard', sans-serif; resize: vertical; }
+
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+            line-height: 1.6;
+        }
+
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+            h1 { font-size: 1.8rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>Knowledge DB</h1>
+                <p style="color: var(--text-sub); margin-top: 5px;">기술 요약 및 핵심 설정 저장소</p>
+            </div>
+            <div class="controls">
+                <button class="btn btn-ghost" onclick="location.href='/portal/home'">메인으로</button>
+                <button class="btn btn-ghost" onclick="exportData()" title="JSON 백업">💾 백업</button>
+                <button class="btn btn-ghost" onclick="importData()" title="JSON 복구">📂 복구</button>
+                <button class="btn btn-primary" onclick="openModal()">+ 새 노트 추가</button>
+                <input type="file" id="restoreFile" style="display: none;" accept=".json" onchange="handleRestoreFile(this)">
+            </div>
+        </header>
+
+        <section class="ai-search-section">
+            <h3 style="margin-bottom: 10px; font-size: 0.9rem; color: var(--accent);">AI 기술 비서에게 물어보기</h3>
+            <div class="ai-input-group">
+                <input type="text" id="ai-question" placeholder="예: 클라우드플레어 토큰 복사하는 법 알려줘">
+                <button class="btn btn-primary" id="btn-ai-ask">질문하기</button>
+            </div>
+            <div id="ai-result" class="ai-answer"></div>
+        </section>
+
+        <div class="category-tabs" id="categoryTabs">
+            <div class="tab active" onclick="filterCategory('all')">전체보기</div>
+            {% for cat in categories %}
+            <div class="tab" onclick="filterCategory('{{ cat }}')">{{ cat }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="grid" id="noteGrid">
+            {% for note in notes %}
+            <div class="card" data-category="{{ note.category }}">
+                <div class="card-actions">
+                    <span class="action-icon edit-btn" data-id="{{ note.id }}">✏️</span>
+                    <span class="action-icon delete-btn" data-id="{{ note.id }}">🗑️</span>
+                </div>
+                <div class="card-category">{{ note.category }}</div>
+                <div class="card-title">{{ note.title }}</div>
+                <div class="card-content" id="content-{{ note.id }}" data-raw-content="{{ note.content|e }}">
+                    <!-- Markdown will be rendered here -->
+                </div>
+                <script type="application/json" id="data-{{ note.id }}">
+                    {{ note.to_dict()|tojson|safe }}
+                </script>
+                <div class="card-links">
+                    {% if note.links %}
+                        {% for link in note.links %}
+                        <a href="{{ link }}" target="_blank" class="link-tag">🔗 {{ link[:30] }}...</a>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="noteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">노트 추가</h2>
+                <button class="btn btn-ghost" onclick="closeModal()">✕</button>
+            </div>
+            <form id="noteForm">
+                <input type="hidden" id="noteId">
+                <div class="form-group">
+                    <label>카테고리</label>
+                    <input type="text" id="noteCategory" placeholder="네트워크, 시스템, 유틸리티 등" required>
+                </div>
+                <div class="form-group">
+                    <label>제목</label>
+                    <input type="text" id="noteTitleInput" placeholder="기술명 또는 주제" required>
+                </div>
+                <div class="form-group">
+                    <label>내용 (Markdown 지원)</label>
+                    <textarea id="noteContent" placeholder="주요 설정법, 용도, 설정값 등을 자유롭게 작성하세요..." required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>링크 (쉼표로 구분)</label>
+                    <input type="text" id="noteLinks" placeholder="https://example.com, ...">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-ghost" onclick="closeModal()">취소</button>
+                    <button type="submit" class="btn btn-primary">저장하기</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Render Markdown for all cards on load
+        document.addEventListener('DOMContentLoaded', () => {
+            const contents = document.querySelectorAll('.card-content');
+            contents.forEach(el => {
+                const rawContent = el.getAttribute('data-raw-content');
+                if (rawContent) {
+                    el.innerHTML = marked.parse(rawContent);
+                    
+                    // 감춰진 암호화 블록(gAAAA...로 시작) 찾아서 복호화 버튼 달기
+                    el.querySelectorAll('code').forEach(codeBox => {
+                        const text = codeBox.innerText.trim();
+                        if (text.startsWith('gAAAA')) {
+                            const btn = document.createElement('button');
+                            btn.className = 'decrypt-btn';
+                            btn.innerHTML = '🔑 복호화';
+                            btn.onclick = () => handleDecrypt(codeBox, text);
+                            codeBox.parentNode.insertBefore(btn, codeBox.nextSibling);
+                            codeBox.style.filter = 'blur(4px)'; // 기본적으로 블러 처리
+                        }
+                    });
+                }
+            });
+
+            // Add event listeners for edit and delete buttons
+            document.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', () => editNote(btn.dataset.id));
+            });
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', () => deleteNote(btn.dataset.id));
+            });
+
+            // AI 질문 버튼 이벤트
+            const btnAiAsk = document.getElementById('btn-ai-ask');
+            if (btnAiAsk) {
+                btnAiAsk.addEventListener('click', askAI);
+            }
+            document.getElementById('ai-question')?.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') askAI();
+            });
+        });
+
+        async function askAI() {
+            const input = document.getElementById('ai-question');
+            const resultDiv = document.getElementById('ai-result');
+            const question = input.value.trim();
+            
+            if (!question) return;
+            
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 답변을 생성 중입니다...';
+            
+            try {
+                const response = await fetch('/knowledge/ai_ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: question })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    resultDiv.innerHTML = marked.parse(data.answer);
+                } else {
+                    resultDiv.innerHTML = '⚠️ 오류: ' + data.message;
+                }
+            } catch (e) {
+                resultDiv.innerHTML = '⚠️ 에러가 발생했습니다: ' + e;
+            }
+        }
+
+        async function handleDecrypt(el, encryptedText) {
+            const btn = el.nextSibling;
+            const isVisible = btn.getAttribute('data-visible') === 'true';
+
+            try {
+                const response = await fetch('/knowledge/decrypt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        text: encryptedText,
+                        is_visible: isVisible // 현재 보이는 상태면 숨기기 요청
+                    })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.action === 'show') {
+                        el.innerText = data.decrypted;
+                        el.style.filter = 'none';
+                        el.style.color = '#10b981';
+                        btn.innerHTML = '🔒 숨기기';
+                        btn.setAttribute('data-visible', 'true');
+                    } else {
+                        el.innerText = encryptedText;
+                        el.style.filter = 'blur(4px)';
+                        el.style.color = '';
+                        btn.innerHTML = '🔑 복호화';
+                        btn.setAttribute('data-visible', 'false');
+                    }
+                } else {
+                    alert('실패: ' + data.message);
+                }
+            } catch (e) {
+                alert('에러 발생: ' + e);
+            }
+        }
+
+        function exportData() {
+            window.location.href = '/knowledge/backup';
+        }
+
+        function importData() {
+            document.getElementById('restoreFile').click();
+        }
+
+        async function handleRestoreFile(input) {
+            if (!input.files || !input.files[0]) return;
+            if (!confirm('복구를 진행하면 현재 DB의 모든 노트가 삭제되고 파일 내용으로 대체됩니다. 진행할까요?')) {
+                input.value = '';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', input.files[0]);
+
+            try {
+                const response = await fetch('/knowledge/restore', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert('복구 실패: ' + data.message);
+                }
+            } catch (e) {
+                alert('에러 발생: ' + e);
+            }
+            input.value = '';
+        }
+
+        function filterCategory(cat) {
+            const cards = document.querySelectorAll('.card');
+            const tabs = document.querySelectorAll('.tab');
+            
+            tabs.forEach(tab => {
+                tab.classList.toggle('active', tab.innerText === cat || (cat === 'all' && tab.innerText === '전체보기'));
+            });
+
+            cards.forEach(card => {
+                if (cat === 'all' || card.dataset.category === cat) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function openModal() {
+            document.getElementById('modalTitle').innerText = '새 노트 추가';
+            document.getElementById('noteForm').reset();
+            document.getElementById('noteId').value = '';
+            document.getElementById('noteModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('noteModal').style.display = 'none';
+        }
+
+        function editNote(id) {
+            const noteData = JSON.parse(document.getElementById(`data-${id}`).textContent);
+            document.getElementById('modalTitle').innerText = '노트 수정';
+            document.getElementById('noteId').value = noteData.id;
+            document.getElementById('noteCategory').value = noteData.category;
+            document.getElementById('noteTitleInput').value = noteData.title;
+            document.getElementById('noteContent').value = noteData.content;
+            document.getElementById('noteLinks').value = noteData.links ? noteData.links.join(', ') : '';
+            document.getElementById('noteModal').style.display = 'flex';
+        }
+
+        document.getElementById('noteForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('noteId').value;
+            const data = {
+                id: id ? parseInt(id) : null,
+                category: document.getElementById('noteCategory').value,
+                title: document.getElementById('noteTitleInput').value,
+                content: document.getElementById('noteContent').value,
+                links: document.getElementById('noteLinks').value.split(',').map(s => s.trim()).filter(s => s)
+            };
+
+            const response = await fetch('/knowledge/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                location.reload();
+            } else {
+                alert('저장 실패: ' + result.message);
+            }
+        };
+
+        async function deleteNote(id) {
+            if (!confirm('정말 삭제하시겠습니까?')) return;
+            const response = await fetch(`/knowledge/delete/${id}`, { method: 'DELETE' });
+            if ((await response.json()).success) location.reload();
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            if (event.target == document.getElementById('noteModal')) closeModal();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQnet | AI 클라우드 POS & 주문 시스템</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #050a14;
+            --accent-cyan: #00f2ff;
+            --accent-blue: #3b82f6;
+            --text-main: #ffffff;
+            --text-dim: #a0aec0;
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Animations */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0px); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1.5rem 10%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(20px);
+            z-index: 1000;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .logo {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: linear-gradient(to right, var(--accent-cyan), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+        }
+
+        nav {
+            display: flex;
+            gap: 2.5rem;
+            align-items: center;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: var(--text-dim);
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: color 0.3s;
+        }
+
+        nav a:hover {
+            color: var(--accent-cyan);
+        }
+
+        .cta-header {
+            background: linear-gradient(45deg, var(--accent-cyan), var(--accent-blue));
+            color: #000;
+            padding: 0.7rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .cta-header:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 180px 10% 100px;
+            display: flex;
+            align-items: center;
+            gap: 4rem;
+            min-height: 90vh;
+            position: relative;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -10%;
+            right: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(0, 242, 255, 0.1) 0%, transparent 70%);
+            z-index: -1;
+        }
+
+        .hero-content {
+            flex: 1;
+            animation: fadeIn 1s ease-out;
+        }
+
+        .hero-content h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 4.5rem;
+            line-height: 1.1;
+            font-weight: 800;
+            margin-bottom: 2rem;
+            letter-spacing: -2px;
+        }
+
+        .hero-content h1 span {
+            color: var(--accent-cyan);
+        }
+
+        .hero-content p {
+            font-size: 1.25rem;
+            color: var(--text-dim);
+            margin-bottom: 3rem;
+            max-width: 500px;
+        }
+
+        .hero-btns {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent-cyan);
+            color: #000;
+            padding: 1.2rem 2.5rem;
+            border-radius: 16px;
+            font-size: 1.1rem;
+            font-weight: 800;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .btn-secondary {
+            background: var(--glass);
+            color: #fff;
+            border: 1px solid var(--glass-border);
+            padding: 1.2rem 2.5rem;
+            border-radius: 16px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .hero-visual {
+            flex: 1.2;
+            position: relative;
+            display: flex;
+            justify-content: center;
+        }
+
+        .hero-visual img {
+            width: 100%;
+            max-width: 700px;
+            border-radius: 30px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+            animation: float 6s ease-in-out infinite;
+            border: 1px solid var(--glass-border);
+        }
+
+        /* Features */
+        .features {
+            padding: 100px 10%;
+            background: rgba(255,255,255,0.01);
+        }
+
+        .section-tag {
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 2px;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .section-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 3rem;
+            margin-bottom: 4rem;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            padding: 3rem;
+            border-radius: 32px;
+            transition: transform 0.3s, background 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            background: rgba(255,255,255,0.06);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: rgba(0, 242, 255, 0.1);
+            color: var(--accent-cyan);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16px;
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card p {
+            color: var(--text-dim);
+        }
+
+        /* Pricing */
+        .pricing {
+            padding: 100px 10%;
+            text-align: center;
+        }
+
+        .price-card {
+            max-width: 400px;
+            margin: 4rem auto;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(0, 242, 255, 0.1) 100%);
+            border: 1px solid var(--accent-cyan);
+            padding: 4rem 3rem;
+            border-radius: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .price-card::after {
+            content: 'MOST POPULAR';
+            position: absolute;
+            top: 30px;
+            right: -40px;
+            background: var(--accent-cyan);
+            color: #000;
+            padding: 0.5rem 3rem;
+            transform: rotate(45deg);
+            font-size: 0.75rem;
+            font-weight: 800;
+        }
+
+        .price-val {
+            font-family: 'Outfit', sans-serif;
+            font-size: 4rem;
+            font-weight: 800;
+            margin: 1rem 0;
+        }
+
+        .price-val span {
+            font-size: 1.2rem;
+            color: var(--text-dim);
+        }
+
+        /* Footer */
+        footer {
+            padding: 80px 10% 40px;
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+        }
+
+        .footer-top {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 40px;
+        }
+
+        .footer-info p {
+            color: var(--text-dim);
+            margin-top: 1rem;
+            max-width: 300px;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 80px;
+        }
+
+        .link-group h4 {
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+
+        .link-group ul {
+            list-style: none;
+        }
+
+        .link-group li {
+            margin-bottom: 0.8rem;
+        }
+
+        .link-group a {
+            text-decoration: none;
+            color: var(--text-dim);
+            transition: color 0.3s;
+        }
+
+        .link-group a:hover {
+            color: #fff;
+        }
+
+        .copyright {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            padding-top: 40px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        @media (max-width: 1024px) {
+            .hero { flex-direction: column; text-align: center; padding-top: 140px; }
+            .hero-content h1 { font-size: 3.5rem; }
+            .hero-content p { margin: 0 auto 3rem; }
+            .hero-btns { justify-content: center; }
+            header { padding: 1.2rem 5%; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">MQnet</div>
+        <nav>
+            <a href="#features">기능소개</a>
+            <a href="#pricing">요금제</a>
+            <a href="/register">무료 체험</a>
+            <a href="/login" style="color: #fff;">로그인</a>
+        </nav>
+        <a href="/register" class="cta-header">시작하기</a>
+    </header>
+
+    <section class="hero">
+        <div class="hero-content">
+            <span class="section-tag">AI-Powered SaaS POS</span>
+            <h1>매장 관리의<br><span>미래를 연결</span>하다.</h1>
+            <p>복잡한 하드웨어 없이 AI와 클라우드로 완성되는 스마트 주문 시스템. 지금 바로 매장의 품격을 높이세요.</p>
+            <div class="hero-btns">
+                <a href="/register" class="btn-primary">7일 무료 체험 시작</a>
+                <a href="#features" class="btn-secondary">자세히 보기</a>
+            </div>
+        </div>
+        <div class="hero-visual">
+            <img src="/static/images/landing_hero.png" alt="MQnet Dashboard Preview">
+        </div>
+    </section>
+
+    <section class="features" id="features">
+        <span class="section-tag">Efficiency</span>
+        <h2 class="section-title">비즈니스를 가속화하는<br>MQnet의 핵심 기능</h2>
+        
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-qrcode"></i></div>
+                <h3>QR 스마트 오더</h3>
+                <p>고객이 앉은 자리에서 QR코드로 직접 주문. 인건비 절감과 주문 회전율을 극대화합니다.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-robot"></i></div>
+                <h3>AI 고객 응대</h3>
+                <p>반복되는 요청사항은 AI가 알아서. 사장님은 더 중요한 일에만 집중하세요.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-cloud"></i></div>
+                <h3>실시간 클라우드 대시보드</h3>
+                <p>언제 어디서나 매장의 현황을 실시간으로 확인하고 관리할 수 있습니다.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-user-gear"></i></div>
+                <h3>직원 근태 관리</h3>
+                <p>출퇴근 체크부터 시급 계산까지. 투명하고 간편한 인사 관리를 지원합니다.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="pricing" id="pricing">
+        <span class="section-tag">Simple Pricing</span>
+        <h2 class="section-title">합리적인 비용으로<br>최고의 인프라를 누리세요</h2>
+        
+        <div class="price-card">
+            <h3>Standard Plan</h3>
+            <div class="price-val">₩50,000<span> / 월</span></div>
+            <p style="color: var(--text-dim); margin-bottom: 2rem;">모든 기능을 제한 없이 사용 가능</p>
+            <ul style="list-style: none; text-align: left; margin-bottom: 3rem; color: var(--text-dim);">
+                <li style="margin-bottom: 1rem;"><i class="fa-solid fa-check" style="color: var(--accent-cyan); margin-right: 10px;"></i> 무제한 QR 테이블 생성</li>
+                <li style="margin-bottom: 1rem;"><i class="fa-solid fa-check" style="color: var(--accent-cyan); margin-right: 10px;"></i> AI 카운터 시스템 탑재</li>
+                <li style="margin-bottom: 1rem;"><i class="fa-solid fa-check" style="color: var(--accent-cyan); margin-right: 10px;"></i> 실시간 정산 및 리포트</li>
+                <li style="margin-bottom: 1rem;"><i class="fa-solid fa-check" style="color: var(--accent-cyan); margin-right: 10px;"></i> 직원 근태 관리 모듈</li>
+            </ul>
+            <a href="/register" class="btn-primary" style="display: block;">지금 도입하기</a>
+        </div>
+    </section>
+
+    <footer>
+        <div class="footer-top">
+            <div class="footer-info">
+                <div class="logo" style="margin-bottom: 1.5rem;">MQnet</div>
+                <p>MQ네트웍스가 선사하는 하이엔드 스마트 매장 솔루션. 우리는 점주님의 성공을 기술로 연결합니다.</p>
+            </div>
+            <div class="footer-links">
+                <div class="link-group">
+                    <h4>제품</h4>
+                    <ul>
+                        <li><a href="#">기능 상세</a></li>
+                        <li><a href="#">성공 사례</a></li>
+                        <li><a href="#">업데이트 소식</a></li>
+                    </ul>
+                </div>
+                <div class="link-group">
+                    <h4>고객지원</h4>
+                    <ul>
+                        <li><a href="/terms">이용약관</a></li>
+                        <li><a href="/privacy">개인정보처리방침</a></li>
+                        <li><a href="#">1:1 문의</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="copyright">
+            &copy; 2026 MQnet by (주)MQ네트웍스. All Rights Reserved.
+        </div>
+    </footer>
+</body>
+</html>

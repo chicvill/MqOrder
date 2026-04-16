@@ -1,0 +1,162 @@
+{% extends "admin/base.html" %}
+{% set active_page = 'stores' %}
+
+{% block title %}가맹점 신규 등록 및 제안 | MQnet Central{% endblock %}
+
+{% block extra_style %}
+<style>
+    :root {
+        --glass-panel: rgba(15, 23, 42, 0.7);
+        --glass-border: rgba(255, 255, 255, 0.08);
+        --neon-primary: #3b82f6;
+        --neon-success: #10b981;
+    }
+
+    .registration-wrapper { 
+        animation: fadeInDown 0.6s cubic-bezier(0.16, 1, 0.3, 1); 
+        max-width: 700px; margin: 2rem auto; 
+    }
+    @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+
+    .reg-card { 
+        background: var(--glass-panel); backdrop-filter: blur(20px); border: 1px solid var(--glass-border);
+        border-radius: 32px; padding: 3rem; box-shadow: 0 40px 100px rgba(0,0,0,0.4);
+    }
+    
+    .registration-title {
+        background: linear-gradient(to right, #fff, #94a3b8);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .form-group { margin-bottom: 2rem; position: relative; }
+    .form-label { display: block; font-size: 0.75rem; color: var(--neon-primary); font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px; }
+    .form-input { 
+        width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 16px;
+        padding: 18px 22px; color: #fff; font-size: 1.1rem; font-weight: 700; outline: none; transition: 0.3s;
+        box-sizing: border-box;
+    }
+    .form-input:focus { border-color: var(--neon-primary); background: rgba(59, 130, 246, 0.05); box-shadow: 0 0 30px rgba(59, 130, 246, 0.1); }
+    
+    .input-hint { font-size: 0.75rem; color: var(--text-dim); margin-top: 10px; display: flex; align-items: center; gap: 6px; }
+
+    .btn-submit { 
+        width: 100%; padding: 22px; border-radius: 20px; border: none; 
+        background: linear-gradient(135deg, var(--neon-primary), #8b5cf6);
+        color: white; font-size: 1.2rem; font-weight: 900; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; gap: 12px;
+        transition: 0.3s; box-shadow: 0 10px 40px rgba(59, 130, 246, 0.3);
+    }
+    .btn-submit:hover { transform: translateY(-4px); box-shadow: 0 20px 60px rgba(59, 130, 246, 0.5); opacity: 0.95; }
+    
+    .info-box { 
+        background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); 
+        border-radius: 20px; padding: 1.5rem; margin-top: 2rem; display: flex; gap: 15px; align-items: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="registration-wrapper">
+    <div style="margin-bottom: 3rem; text-align: center;">
+        <h1 class="registration-title" style="font-size: 2.5rem; font-weight: 950; margin: 0;">Deploy Store Instance</h1>
+        <p style="color: var(--text-dim); margin-top: 10px; font-weight: 600;">새로운 가맹점 인스턴스를 시스템 클러스터에 배포합니다.</p>
+    </div>
+
+    <div class="reg-card">
+        <form action="/admin/stores/add" method="POST">
+            <div class="form-group">
+                <label class="form-label">매장 고유 식별자 (Slug / Domain ID)</label>
+                <input type="text" name="id" class="form-input" placeholder="예: gangnam-main" required>
+                <div class="input-hint"><i data-lucide="help-circle" size="14"></i> 소문자 영문, 숫자, 하이픈(-)만 사용 가능합니다.</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">매장 서비스 명칭</label>
+                <input type="text" name="name" class="form-input" placeholder="예: 수라골 강남점" required>
+                <div class="input-hint">가맹점 목록에 표시될 실제 매장 이름입니다.</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">초기 운영 스케일 (테이블 수)</label>
+                <input type="number" name="tables" class="form-input" value="20" min="1" max="100">
+                <div class="input-hint">설명: 현장 POS 및 주문 앱에서 사용할 테이블 개수입니다.</div>
+            </div>
+
+            <!-- [NEW] 무통장 입금 계좌 정보 섹션 -->
+            <div style="margin-bottom: 2rem; padding: 2rem; background: rgba(59, 130, 246, 0.05); border: 1px solid var(--glass-border); border-radius: 24px;">
+                <h4 style="margin: 0 0 1.5rem 0; font-size: 0.9rem; color: #fff; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="credit-card" size="18" style="color: var(--neon-primary);"></i> 입금 계좌 설정 (토스 딥링크용)
+                </h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" style="font-size: 0.65rem;">은행명</label>
+                        <input type="text" name="bank_name" class="form-input" placeholder="예: 농협, 신한" style="padding: 12px 18px; font-size: 0.95rem;">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" style="font-size: 0.65rem;">예금주명</label>
+                        <input type="text" name="account_holder" class="form-input" placeholder="예: 홍길동" style="padding: 12px 18px; font-size: 0.95rem;">
+                    </div>
+                    <div class="form-group" style="grid-column: span 2; margin-top: 15px; margin-bottom: 0;">
+                        <label class="form-label" style="font-size: 0.65rem;">계좌번호</label>
+                        <input type="text" name="account_no" class="form-input" placeholder="숫자만 입력" style="padding: 12px 18px; font-size: 0.95rem;">
+                    </div>
+                </div>
+                <div class="input-hint" style="margin-top: 15px;">이 정보는 고객 결제 시 토스 송금 화면에 자동으로 반영됩니다.</div>
+            </div>
+
+            <!-- [NEW] 강력 강조: 초기 메뉴 데이터 주입 기능 -->
+            <div style="margin-bottom: 2rem; padding: 1.5rem; background: rgba(255, 0, 0, 0.05); border-radius: 24px; border: 3px solid #ef4444; box-shadow: 0 0 20px rgba(239, 68, 68, 0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <span style="font-size: 0.8rem; color: #ef4444; font-weight: 950; letter-spacing: 1px;">🚀 [NEW] 초기 메뉴 데이터 JSON 주입</span>
+                    <button type="button" onclick="importInitialMenu()" id="import-btn" style="background: #ef4444; border: none; color: white; padding: 8px 16px; border-radius: 10px; font-size: 0.75rem; font-weight: 900; cursor: pointer; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);">JSON 코드 입력하기</button>
+                </div>
+                <div id="import-status" style="font-size: 0.7rem; color: var(--text-dim); font-weight: 600;">⚠️ 석남피자 등 예제 데이터를 여기에 주입할 수 있습니다.</div>
+                <input type="hidden" name="menu_data" id="initial_menu_data">
+            </div>
+
+            <button type="submit" class="btn-submit">
+                <i data-lucide="rocket"></i> 인스턴스 전개 및 등록
+            </button>
+        </form>
+
+        <div class="info-box">
+            <div style="color: var(--neon-success);"><i data-lucide="shield-check" size="24"></i></div>
+            <div style="font-size: 0.85rem; color: var(--text-dim); line-height: 1.6;">
+                <strong style="color:#fff;">파트너 자동 매칭 가동:</strong><br>
+                등록하신 가맹점은 자동으로 귀하의 담당 매장으로 지정되어 실적 집계에 포함됩니다.
+            </div>
+        </div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 2rem;">
+        <a href="/admin/stores" style="color: var(--text-dim); text-decoration: none; font-size: 0.85rem; font-weight: 700;">
+            <i data-lucide="arrow-left" size="14" style="vertical-align: middle;"></i> 매장 목록으로 복귀
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    lucide.createIcons();
+    
+    function importInitialMenu() {
+        const raw = prompt("복사한 JSON 데이터를 붙여넣어 주세요:");
+        if (!raw) return;
+        try {
+            const parsed = JSON.parse(raw);
+            document.getElementById('initial_menu_data').value = raw;
+            const statusBox = document.getElementById('import-status');
+            const btn = document.getElementById('import-btn');
+            
+            statusBox.innerHTML = `<span style="color:var(--neon-success); font-weight:800;">✓ 메뉴 데이터 준비 완료!</span> (카테고리: ${Object.keys(parsed).length}개)`;
+            btn.innerText = "데이터 교체";
+            alert("알림: 메뉴 데이터가 준비되었습니다. '인스턴스 전개' 버튼을 누르면 매장 생성과 함께 메뉴가 등록됩니다.");
+        } catch(e) {
+            alert("에러: 올바르지 않은 JSON 형식이거나 코드가 누락되었습니다.");
+        }
+    }
+</script>
+{% endblock %}

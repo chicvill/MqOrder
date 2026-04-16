@@ -1,0 +1,74 @@
+{% extends "admin/base.html" %}
+{% set active_page = 'dashboard' %}
+
+{% block title %}Manager Dashboard | MQnet{% endblock %}
+
+{% block extra_style %}
+<style>
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 25px; display: flex; align-items: center; gap: 15px; }
+
+    .tree-menu-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; margin-bottom: 40px; }
+    .tree-category { background: rgba(59, 130, 246, 0.03); border: 1px dashed var(--primary); border-radius: 24px; padding: 25px; }
+    .tree-title { font-size: 1rem; font-weight: 800; color: var(--primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+    .tree-list { list-style: none; padding-left: 15px; border-left: 2px solid var(--border); }
+    .tree-item { margin-bottom: 12px; position: relative; }
+    .tree-item::before { content: ""; position: absolute; left: -17px; top: 12px; width: 12px; height: 1px; background: var(--border); }
+    .tree-link { text-decoration: none; color: var(--text-dim); font-size: 0.9rem; font-weight: 600; transition: 0.2s; display: flex; align-items: center; gap: 8px; }
+    .tree-link:hover { color: white; transform: translateX(5px); }
+    .tree-link i { color: var(--primary); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="header" style="margin-bottom: 30px;">
+    <h1><i data-lucide="command" style="vertical-align: middle; margin-right: 10px; color: var(--primary);"></i> 매장 운영 점장 대시보드</h1>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div style="width:50px; height:50px; border-radius:12px; background:rgba(59, 130, 246, 0.1); color:var(--primary); display:flex; align-items:center; justify-content:center;"><i data-lucide="clock"></i></div>
+        <div>
+            <div style="font-size:0.75rem; color:var(--text-dim);">오늘 주문 수</div>
+            <div style="font-size:1.3rem; font-weight:900;">{{ total_orders }}개</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div style="width:50px; height:50px; border-radius:12px; background:rgba(239, 68, 68, 0.1); color:var(--danger); display:flex; align-items:center; justify-content:center;"><i data-lucide="alert-circle"></i></div>
+        <div>
+            <div style="font-size:0.75rem; color:var(--text-dim);">대기 중인 손님</div>
+            <div style="font-size:1.3rem; font-weight:900;">{{ total_waiting }}팀</div>
+        </div>
+    </div>
+</div>
+
+<div class="tree-menu-container">
+    <!-- 현장 실시간 대시보드 -->
+    <div class="tree-category">
+        <div class="tree-title"><i data-lucide="play-circle"></i> 현장 운영 메인</div>
+        <ul class="tree-list">
+            <li class="tree-item"><a href="/{{ session['store_id'] }}/counter" target="_blank" class="tree-link"><i data-lucide="layout"></i> 전체 매장 관제 (카운터)</a></li>
+            <li class="tree-item"><a href="/{{ session['store_id'] }}/kitchen" target="_blank" class="tree-link"><i data-lucide="flame"></i> 주방 조리 현황 대시보드</a></li>
+            <li class="tree-item"><a href="/{{ session['store_id'] }}/waiting" target="_blank" class="tree-link"><i data-lucide="list-ordered"></i> 대기 고객 입원 관리</a></li>
+        </ul>
+    </div>
+
+    <!-- 인원 관리 -->
+    <div class="tree-category" style="background:rgba(16, 185, 129, 0.03); border-color:var(--accent);">
+        <div class="tree-title" style="color:var(--accent);"><i data-lucide="users"></i> 직원 및 근태 관리</div>
+        <ul class="tree-list">
+            <li class="tree-item"><a href="/admin/staff" class="tree-link"><i data-lucide="calendar-check"></i> 오늘의 출퇴근 승인 현황</a></li>
+            <li class="tree-item"><a href="/admin/staff" class="tree-link"><i data-lucide="clipboard-list"></i> 이전 근사/근태 기록 조회</a></li>
+        </ul>
+    </div>
+
+    <!-- 설정 보조 -->
+    <div class="tree-category">
+        <div class="tree-title"><i data-lucide="settings-2"></i> 운영 설정 지원</div>
+        <ul class="tree-list">
+            <li class="tree-item"><a href="/{{ session['store_id'] }}/qr-print" target="_blank" class="tree-link"><i data-lucide="printer"></i> 테이블 QR 코드 일괄 출력</a></li>
+            <li class="tree-item"><a href="/profile" class="tree-link"><i data-lucide="lock"></i> 개인 비밀번호 수정</a></li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

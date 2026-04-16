@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>{{ store.name }} - Premium AI Order</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://js.tosspayments.com/v1/payment"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&family=Pretendard:wght@300;400;700;900&display=swap');
+
+        :root { 
+            --coffee-deep: #1a0f0a; 
+            --coffee-main: #3d2b1f;
+            --coffee-accent: #d2691e;
+            --coffee-cream: #f3e5ab; 
+            --glass-bg: rgba(255, 255, 255, 0.08);
+            --safe-bottom: env(safe-area-inset-bottom);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            background: linear-gradient(135deg, var(--coffee-deep) 0%, var(--coffee-main) 100%); 
+            font-family: 'Pretendard', sans-serif; 
+            margin: 0; padding: 0; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; color: #fff;
+            position: relative;
+        }
+        
+        /* Header & Top Cat Bar */
+        header { 
+            position: fixed; top: 0; left: 0; right: 0; height: 60px;
+            background: #1a0f0a; padding: 0 15px; 
+            display: flex; justify-content: space-between; align-items: center; 
+            z-index: 5000;
+            border-bottom: 2px solid var(--coffee-accent);
+        }
+
+        /* Silver Mode Styles */
+        body.silver-mode { 
+            --coffee-main: #000; 
+            --coffee-accent: #ff8c00;
+            font-size: 1.3rem; 
+        }
+        body.silver-mode .bubble { font-size: 1.4rem; padding: 20px 25px; }
+        body.silver-mode .msg-input { font-size: 1.4rem; padding: 18px 25px; }
+        body.silver-mode .qty-node { width: 50px; height: 50px; font-size: 2rem; }
+        body.silver-mode .cat-chip { font-size: 1.2rem; padding: 12px 25px; border-radius: 30px; }
+        body.silver-mode #top-cat-bar { height: 75px; }
+        body.silver-mode #cart-bar { height: 90px; font-size: 1.3rem; }
+        
+        #top-cat-bar {
+            position: fixed; top: 60px; left: 0; right: 0; height: 60px; /* 터치 영역 위해 높이 소폭 확대 */
+            background: rgba(26, 15, 10, 0.95); backdrop-filter: blur(15px);
+            display: flex; align-items: center; gap: 10px; padding: 0 15px;
+            overflow-x: auto; white-space: nowrap; border-bottom: 1px solid rgba(255,255,255,0.05);
+            z-index: 4999; scrollbar-width: none;
+        }
+        #top-cat-bar::-webkit-scrollbar { display: none; }
+        
+        .cat-chip {
+            padding: 10px 18px; border-radius: 25px; background: rgba(255,255,255,0.1);
+            font-size: 0.95rem; font-weight: 700; color: #ccc; cursor: pointer; transition: 0.2s;
+            border: 1px solid transparent;
+        }
+        .cat-chip.active { background: var(--coffee-accent); color: #fff; border-color: rgba(255,255,255,0.2); box-shadow: 0 4px 15px rgba(210,105,30,0.5); }
+
+        /* Menu Board (Floating Top Card) */
+        #menu-board {
+            position: fixed; top: 125px; left: 10px; right: 10px;
+            max-height: 45vh; background: #fff; border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            overflow-y: auto; z-index: 4500;
+            display: none; animation: dropDown 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+            border: 2px solid var(--coffee-accent);
+        }
+        @keyframes dropDown { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        #menu-board::-webkit-scrollbar { width: 4px; }
+        #menu-board::-webkit-scrollbar-thumb { background: #ddd; border-radius: 10px; }
+        
+        #menu-board.minimized {
+            max-height: 120px;
+            border-color: #eee;
+        }
+
+        /* Chat Window (Independent Scrolling) */
+        #chat-window { 
+            flex: 1; margin-top: 120px; padding: 15px 15px 260px 15px; /* 하단 넉넉히 확보 */
+            background: #bacee0; 
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
+            display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth;
+        }
+        #chat-window::-webkit-scrollbar { width: 4px; }
+        #chat-window::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+
+        /* Bubbles */
+        .bubble { 
+            max-width: 85%; padding: 12px 16px; border-radius: 15px; font-size: 1rem; line-height: 1.4; 
+            position: relative; animation: popUp 0.3s ease-out; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            font-weight: 500; word-break: break-all;
+        }
+        @keyframes popUp { from { transform: scale(0.9) translateY(10px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+        
+        /* Bot Bubble (Left/White) */
+        .bubble.bot { background: #fff; color: #1a1a1a; align-self: flex-start; border-top-left-radius: 3px; border: 1px solid #ddd; }
+        
+        /* User/Intro Bubble (Right/Yellow) */
+        .bubble.user, .bubble.intro { background: #fee500; color: #1a1a1a; align-self: flex-end; border-top-right-radius: 3px; }
+        .bubble.intro { background: #fee500; font-weight: 800; border: 1px solid #e0c500; }
+
+        /* Floating Components */
+        #cart-bar {
+            position: fixed; bottom: 85px; left: 10px; right: 10px;
+            background: linear-gradient(90deg, #d2691e, #b35919); color: white;
+            padding: 14px 18px; border-radius: 20px;
+            display: none; justify-content: space-between; align-items: center;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3); z-index: 4000;
+            cursor: pointer; animation: slideUp 0.3s ease-out;
+            font-size: 0.95rem;
+        }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .mic-floating { 
+            position: fixed; bottom: 155px; right: 20px; 
+            width: 60px; height: 60px; border-radius: 50%; 
+            background: #3b82f6; color: white; display: flex; align-items: center; justify-content: center; 
+            box-shadow: 0 8px 20px rgba(59,130,246,0.6); z-index: 5000; cursor: pointer;
+        }
+        @keyframes mic-pulse {
+            0% { transform: scale(1); box-shadow: 0 10px 30px rgba(59,130,246,0.6); }
+            50% { transform: scale(1.1); box-shadow: 0 15px 45px rgba(239,68,68,0.8); }
+            100% { transform: scale(1); box-shadow: 0 10px 30px rgba(59,130,246,0.6); }
+        }
+        .mic-floating.listening {
+            animation: mic-pulse 1.5s infinite ease-in-out;
+            background: #ef4444 !important;
+            border-color: #f87171 !important;
+        }
+
+        /* Bottom Entry */
+        .bottom-nav { 
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: rgba(18, 12, 8, 0.95); padding: 12px 15px calc(15px + var(--safe-bottom)) 15px; 
+            display: flex; align-items: center; gap: 10px; 
+            backdrop-filter: blur(30px); border-top: 1px solid rgba(255,255,255,0.05); z-index: 3000;
+        }
+        .msg-input { flex: 1; border: none; background: rgba(255,255,255,0.08); padding: 14px 20px; border-radius: 30px; outline: none; font-size: 1rem; color: #fff; }
+
+        /* Menu Display */
+        .inner-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: rgba(0,0,0,0.3); padding: 12px 15px; border-radius: 15px; }
+        .qty-ctrl { display: flex; align-items: center; gap: 12px; }
+        .qty-node { width: 34px; height: 34px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
+        .qty-node.plus { background: var(--coffee-accent); font-weight: 900; }
+        
+        .typing { display: flex; gap: 4px; padding: 10px 0; }
+        .dot { width: 6px; height: 6px; background: var(--coffee-cream); border-radius: 50%; animation: blink 1.4s infinite both; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes blink { 0%, 80%, 100% { opacity: 0; } 40% { opacity: 1; } }
+
+        /* 포인트 모달 스타일 */
+        #point-modal {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+            z-index: 10000; display: none; align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background: #1a0f0a; border: 2px solid var(--coffee-accent);
+            width: 85%; max-width: 400px; padding: 25px; border-radius: 25px;
+            text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        .modal-content h2 { color: var(--coffee-cream); margin-top: 0; margin-bottom: 20px; font-weight: 900; }
+        .phone-input-group { margin-bottom: 20px; }
+        .phone-input-group input {
+            width: 100%; background: rgba(255,255,255,0.05); border: 1px solid #444;
+            padding: 15px; border-radius: 15px; color: #fff; font-size: 1.2rem;
+            text-align: center; letter-spacing: 2px; outline: none;
+        }
+        .phone-input-group input:focus { border-color: var(--coffee-accent); box-shadow: 0 0 10px rgba(210,105,30,0.3); }
+    </style>
+</head>
+<body>
+    <header>
+        <div style="font-weight:900; color:var(--coffee-cream); font-size:1.1rem;">{{ store.name }}</div>
+        <div style="display:flex; align-items:center; gap:8px;">
+            <button onclick="openPointModal()" style="background:none; border:1px solid #ffcc00; color:#ffcc00; padding:6px 12px; border-radius:20px; font-size:0.85rem; font-weight:700;">
+                <i data-lucide="database" size="14" style="vertical-align:middle;"></i> 포인트
+            </button>
+            <button id="silver-toggle" onclick="toggleSilver()" style="background:var(--coffee-accent); border:none; color:white; padding:6px 12px; border-radius:20px; font-size:0.85rem; font-weight:900; box-shadow:0 4px 10px rgba(0,0,0,0.3);">🦁 큰글씨</button>
+            <button onclick="quickService('호출')" style="background:none; border:1px solid var(--coffee-cream); color:var(--coffee-cream); padding:6px 12px; border-radius:20px; font-size:0.85rem; font-weight:700;">직원호출</button>
+            <button id="mute-btn" onclick="toggleMute()" style="background:none; border:none; color:var(--coffee-cream); cursor:pointer; padding:5px;"><i data-lucide="volume-2" size="20"></i></button>
+        </div>
+    </header>
+
+    <div id="top-cat-bar"></div>
+    
+    <div id="menu-board">
+        <!-- 메뉴 리스트가 여기에 고정되어 나타남 -->
+    </div>
+
+    <div id="chat-window"></div>
+
+    <div id="cart-bar" onclick="showSummary()">
+        <div style="display:flex; align-items:center; gap:8px;">
+            <i data-lucide="shopping-cart"></i>
+            <span style="font-weight:700;"><span id="cart-count">0</span>개 항목</span>
+        </div>
+        <div style="font-weight:900;">총 <span id="cart-total">0</span>원 결제하기 ></div>
+    </div>
+
+    <div class="mic-floating" id="mic-btn" onmousedown="startDrag(event)" ontouchstart="startDrag(event)" style="position:fixed; bottom:180px; right:20px; width:65px; height:65px; background:#3b82f6; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 10px 25px rgba(59,130,246,0.5); z-index:9000; cursor:pointer;">
+        <i data-lucide="mic"></i>
+        <!-- [추가] 마이크 버튼에 밀착된 플로팅 라벨 -->
+        <div id="live-caption" style="display:none; position:absolute; bottom:80px; right:0; white-space:nowrap; background:rgba(0,0,0,0.8); color:#fff; padding:8px 16px; border-radius:15px; font-size:0.85rem; font-weight:700; backdrop-filter:blur(10px); border:1px solid #3b82f6; pointer-events:none; box-shadow:0 10px 20px rgba(0,0,0,0.3);"></div>
+    </div>
+
+    <div class="bottom-nav">
+        <input type="text" id="chat-input" class="msg-input" placeholder="주문을 말씀하시거나 분류를 선택하세요" onkeypress="if(event.key==='Enter') userSend()">
+        <button onclick="userSend()" style="color:var(--coffee-accent); background:none; border:none;"><i data-lucide="send"></i></button>
+    </div>
+
+    <div id="notice-area" style="position:fixed; top:75px; left:50%; transform:translateX(-50%); z-index:10000; pointer-events:none;"></div>
+
+    <!-- 포인트 입력 모달 -->
+    <div id="point-modal">
+        <div class="modal-content">
+            <h2>💰 포인트 적립</h2>
+            <p style="color:#aaa; font-size:0.85rem; margin-bottom:15px;">전화번호를 입력하시면<br>결제 금액의 일부를 적립해 드립니다.</p>
+            <div class="phone-input-group">
+                <input type="tel" id="point-phone" placeholder="010-0000-0000" maxlength="13">
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button onclick="closePointModal()" style="flex:1; padding:15px; border-radius:15px; background:#333; color:#fff; border:none; font-weight:700;">취소</button>
+                <button onclick="savePointPhone()" style="flex:1; padding:15px; border-radius:15px; background:var(--coffee-accent); color:#fff; border:none; font-weight:700;">등록하기</button>
+            </div>
+        </div>
+    </div>
+
+    <script id="menu-json" type="application/json">{{ store.menu_data | tojson | safe }}</script>
+    <script>
+        // [드래그 이동 로직]
+        let isDragging = false;
+        let startX, startY, initialX, initialY;
+        function startDrag(e) {
+            isDragging = false;
+            const el = document.getElementById('mic-btn');
+            const touch = e.type === 'touchstart' ? e.touches[0] : e;
+            startX = touch.clientX; startY = touch.clientY;
+            initialX = el.offsetLeft; initialY = el.offsetTop;
+            document.onmousemove = document.ontouchmove = doDrag;
+            document.onmouseup = document.ontouchend = endDrag;
+        }
+        function doDrag(e) {
+            const touch = e.type === 'touchmove' ? e.touches[0] : e;
+            const dx = touch.clientX - startX; const dy = touch.clientY - startY;
+            if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                isDragging = true;
+                const el = document.getElementById('mic-btn');
+                el.style.left = (initialX + dx) + 'px'; el.style.top = (initialY + dy) + 'px';
+                el.style.right = 'auto'; el.style.bottom = 'auto';
+            }
+        }
+        
+        // [추가] AI 음성 합성(TTS) 로직
+        function speakResponse(text) {
+            if (!window.speechSynthesis) return;
+            const uttr = new SpeechSynthesisUtterance(text);
+            uttr.lang = 'ko-KR';
+            uttr.rate = 0.9;
+            uttr.pitch = 1.1;
+            const voices = window.speechSynthesis.getVoices();
+            const femaleVoice = voices.find(v => v.lang === 'ko-KR' && (v.name.includes('Google') || v.name.includes('Female') || v.name.includes('Heami')));
+            if (femaleVoice) uttr.voice = femaleVoice;
+            window.speechSynthesis.speak(uttr);
+        }
+
+        let rec;
+        function toggleVoice() {
+            const btn = document.getElementById('mic-btn');
+            const caption = document.getElementById('live-caption');
+            if(btn.classList.contains('listening')) { if(rec) rec.stop(); return; }
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if(!SR) return;
+            rec = new SR(); rec.lang = 'ko-KR'; 
+            rec.interimResults = true; // 실시간 결과 활성화
+            
+            rec.onstart = () => { 
+                window.speechSynthesis.cancel();
+                btn.style.background = '#ef4444'; btn.classList.add('listening'); caption.style.display = 'block'; caption.innerText = "듣고 있어요..."; 
+            };
+            rec.onend = () => { btn.style.background = '#3b82f6'; btn.classList.remove('listening'); setTimeout(() => { caption.style.display = 'none'; }, 2000); };
+            
+            rec.onresult = (e) => {
+                let interim = "";
+                for (let i = e.resultIndex; i < e.results.length; ++i) {
+                    if (e.results[i].isFinal) {
+                        processVoice(e.results[i][0].transcript);
+                    } else {
+                        interim += e.results[i][0].transcript;
+                    }
+                }
+                if(interim) caption.innerText = interim; // 실시간 텍스트 표시
+            };
+            rec.start();
+        }
+
+        function endDrag() {
+            document.onmousemove = document.ontouchmove = null;
+            document.onmouseup = document.ontouchend = null;
+            if(!isDragging) toggleVoice();
+        }
+
+        const socket = io();
+        const menuData = JSON.parse(document.getElementById('menu-json').textContent);
+        const storeId = '{{ store.id }}';
+        const tableId = '{{ table_id }}';
+        const sessionId = localStorage.getItem('wang_gung_session') || '{{ session_id }}';
+        
+        let silverMode = localStorage.getItem('silver_mode') === 'true';
+        if(silverMode) document.body.classList.add('silver-mode');
+
+        function toggleSilver() {
+            silverMode = !silverMode;
+            document.body.classList.toggle('silver-mode', silverMode);
+            localStorage.setItem('silver_mode', silverMode);
+            showNotice(silverMode ? '🦁 큰 글씨 모드가 켜졌습니다.' : '🦁 일반 모드로 돌아갑니다.');
+        }
+
+        let isMuted = localStorage.getItem('is_muted') === 'true';
+        function toggleMute() {
+            isMuted = !isMuted;
+            localStorage.setItem('is_muted', isMuted);
+            updateMuteUI();
+            showNotice(isMuted ? '🔇 무음 모드가 켜졌습니다.' : '🔊 소리가 켜졌습니다.');
+        }
+        function updateMuteUI() {
+            const btn = document.getElementById('mute-btn');
+            if (btn) {
+                btn.innerHTML = isMuted ? '<i data-lucide="volume-x" size="20"></i>' : '<i data-lucide="volume-2" size="20"></i>';
+                lucide.createIcons();
+            }
+        }
+        window.addEventListener('load', updateMuteUI);
+
+        let cart = {};
+        let openedCats = new Set();
+        const chatWin = document.getElementById('chat-window');
+        const topBar = document.getElementById('top-cat-bar');
+
+        function sendBotMsg(html, options = null, alignRight = false) {
+            const div = document.createElement('div');
+            div.className = `bubble bot ${alignRight ? 'intro' : ''}`;
+            div.innerHTML = html;
+            chatWin.appendChild(div);
+            if (options) {
+                const group = document.createElement('div');
+                group.style.display = 'flex'; 
+                group.style.flexDirection = alignRight ? 'row' : 'column'; // [수정] 우측 정렬 시 가로 배열
+                group.style.flexWrap = 'wrap';
+                group.style.justifyContent = alignRight ? 'flex-end' : 'flex-start';
+                group.style.gap = '12px'; 
+                group.style.marginTop = '10px';
+                
+                options.forEach(opt => {
+                    const btn = document.createElement('button');
+                    btn.style.background = '#fff'; btn.style.border = '2px solid var(--coffee-accent)'; 
+                    btn.style.padding = '15px 20px'; btn.style.borderRadius = '15px';
+                    btn.style.fontWeight = '900'; btn.style.color = '#1a0f0a'; 
+                    btn.style.fontSize = alignRight ? '1.2rem' : '1rem'; // [수정] 1.5배 느낌의 큰 폰트
+                    btn.style.boxShadow = '0 4px 10px rgba(0,0,0,0.1)';
+                    btn.innerHTML = opt.label;
+                    btn.onclick = opt.action;
+                    group.appendChild(btn);
+                });
+                chatWin.appendChild(group);
+            }
+            chatWin.scrollTop = chatWin.scrollHeight;
+            lucide.createIcons();
+        }
+
+        function sendUserMsg(txt) {
+            const div = document.createElement('div');
+            div.className = 'bubble user';
+            div.innerText = txt;
+            chatWin.appendChild(div);
+            chatWin.scrollTop = chatWin.scrollHeight;
+        }
+
+        function initFlow() {
+            chatWin.innerHTML = '';
+            
+            // 상단 카테고리 바 생성
+            topBar.innerHTML = '';
+            const categories = Object.keys(menuData);
+            categories.forEach((c, idx) => {
+                const chip = document.createElement('div');
+                chip.className = 'cat-chip';
+                chip.id = `chip-${c}`;
+                chip.innerText = c;
+                chip.onclick = () => {
+                    document.querySelectorAll('.cat-chip').forEach(el => el.classList.remove('active'));
+                    chip.classList.add('active');
+                    showMenu(c);
+                };
+                topBar.appendChild(chip);
+
+                // 첫 번째 탭 디폴트로 열기
+                if (idx === 0) {
+                    setTimeout(() => chip.onclick(), 100);
+                }
+            });
+
+            // 환영 인사 우측 말풍선으로 전송
+            const welcomeDiv = document.createElement('div');
+            welcomeDiv.className = 'bubble intro';
+            welcomeDiv.innerHTML = `🌟 WELCOME<br><small>AI 바리스타가 주문을 도와드립니다.<br>메뉴를 선택하거나 음성으로 말씀해 주세요.</small>`;
+            chatWin.appendChild(welcomeDiv);
+
+            setTimeout(() => {
+                sendBotMsg("<b>바리스타 AI 호흡을 가다듬고 기다리고 있습니다.</b> 어떤 메뉴를 준비해 드릴까요?");
+            }, 600);
+        }
+
+        function showMenu(cat) {
+            const board = document.getElementById('menu-board');
+            board.style.display = 'block';
+            board.classList.remove('minimized'); // 메뉴 탐색 시 확장
+            
+            let html = `
+                <div style="padding: 15px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; position:sticky; top:0; background:#fff; padding:5px 0; border-bottom:1px solid #eee; z-index:10;">
+                        <span style="font-weight:900; font-size:1.1rem; color:var(--coffee-deep);">${cat}</span>
+                        <i data-lucide="chevron-up" onclick="document.getElementById('menu-board').style.display='none'" style="cursor:pointer; width:22px;"></i>
+                    </div>`;
+            
+            menuData[cat].forEach(item => {
+                html += `
+                    <div class="inner-item" style="background:#f8f9fa; border:1px solid #eee; color:#333; padding:10px 15px;">
+                        <div style="display:flex; align-items:baseline; gap:8px; flex:1; overflow:hidden;">
+                            <span style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.name}</span>
+                            <span style="font-size:0.95rem; font-weight:800; color:var(--coffee-accent); white-space:nowrap;">${item.price.toLocaleString()}원</span>
+                        </div>
+                        <div class="qty-ctrl">
+                            <button class="qty-node" style="background:#ddd; color:#333; transform:scale(0.7); transform-origin:center;" onclick="changeQty('${item.name}', ${item.price}, -1)">-</button>
+                            <span id="qty-${item.name}" style="min-width:15px; text-align:center; font-weight:800; font-size:0.9rem;">${cart[item.name]?.quantity || 0}</span>
+                            <button class="qty-node plus" style="transform:scale(0.7); transform-origin:center;" onclick="changeQty('${item.name}', ${item.price}, 1)">+</button>
+                        </div>
+                    </div>`;
+            });
+            html += `</div>`;
+            board.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        function closeMenu(cat, icon) { openedCats.delete(cat); icon.closest('.bubble.bot').remove(); }
+
+        function updateUI() {
+            let totalQty = 0; let totalPrice = 0;
+            Object.values(cart).forEach(v => { totalQty += v.quantity; totalPrice += v.price * v.quantity; });
+            const bar = document.getElementById('cart-bar');
+            if (totalQty > 0) {
+                bar.style.display = 'flex';
+                document.getElementById('cart-count').innerText = totalQty;
+                document.getElementById('cart-total').innerText = totalPrice.toLocaleString();
+            } else { bar.style.display = 'none'; }
+            
+            // 주문 확인창 내 TOTAL 금액도 실시간 업데이트
+            document.querySelectorAll('.sum-total-val').forEach(el => {
+                el.innerText = totalPrice.toLocaleString();
+            });
+        }
+
+        function changeQty(name, price, d) {
+            if(!cart[name]) cart[name] = { price: price, quantity: 0 };
+            cart[name].quantity += d;
+            if(cart[name].quantity < 0) cart[name].quantity = 0;
+            
+            const spans = document.querySelectorAll(`[id="qty-${name}"], [id="sum-q-${name}"]`);
+            spans.forEach(s => s.innerText = cart[name].quantity);
+            
+            // 수량이 0이면 주문 확인창(말풍선) 내의 해당 행 삭제
+            if (cart[name].quantity === 0) {
+                document.querySelectorAll('.bubble.bot .inner-item').forEach(row => {
+                    if (row.querySelector(`[id="qty-${name}"]`)) {
+                        row.style.opacity = '0';
+                        row.style.transform = 'scale(0.95)';
+                        setTimeout(() => row.remove(), 200);
+                    }
+                });
+            }
+            
+            updateUI();
+        }
+
+        /* ─────────────────────────────────────────────────────────────
+           초기화 및 소켓 이벤트
+        ───────────────────────────────────────────────────────────── */
+        window.onload = () => {
+            checkOrderAndResetSession(); // 결제 완료 여부 체크 (자동 로그아웃)
+            initFlow();
+        }
+
+        socket.on('order_paid', (data) => {
+            if (data.session_id === sessionId) {
+                localStorage.removeItem('mq_session_id');
+                location.reload();
+            }
+        });
+
+        function showSummary() {
+            const items = Object.entries(cart).filter(([n,v]) => v.quantity > 0);
+            if(items.length === 0) return showNotice('장바구니가 비어있습니다.', true);
+            
+            const board = document.getElementById('menu-board');
+            if(board.style.display !== 'none') board.classList.add('minimized'); // 결제 확인 시 축소
+            
+            let html = `<div style="text-align:center; font-weight:900; color:#008080; margin-bottom:15px; font-size:1.2rem;">주문 내역 확인</div>`;
+            let total = 0;
+            items.forEach(([name, val]) => {
+                html += `
+                    <div class="inner-item" style="background:#f8f9fa; border:1px solid #eee; color:#333; padding:10px 15px; margin-bottom:8px;">
+                        <div style="display:flex; align-items:baseline; gap:8px; flex:1; overflow:hidden;">
+                            <span style="font-weight:700;">${name}</span>
+                            <span style="font-size:0.85rem; opacity:0.6;">${val.price.toLocaleString()}원</span>
+                        </div>
+                        <div class="qty-ctrl">
+                            <button class="qty-node" style="background:#ddd; color:#333; transform:scale(0.7);" onclick="changeQty('${name}', ${val.price}, -1)">-</button>
+                            <span id="qty-${name}" style="min-width:15px; text-align:center; font-weight:800; font-size:0.9rem;">${val.quantity}</span>
+                            <button class="qty-node plus" style="transform:scale(0.7);" onclick="changeQty('${name}', ${val.price}, 1)">+</button>
+                        </div>
+                    </div>`;
+                total += val.price * val.quantity;
+            });
+            html += `<div style="text-align:right; font-weight:900; font-size:1.3rem; margin-top:15px; color:#1a0f0a;">TOTAL: <span class="sum-total-val">${total.toLocaleString()}</span>원</div>`;
+            
+            // 주문 내역과 버튼을 하나의 말풍선으로 묶음
+            sendBotMsg(html, [
+                { label: '💳 카드결제', action: () => submitOrder('card', total) },
+                { label: '🧔 후불결제', action: () => submitOrder('postpaid', total) }
+            ], true);
+        }
+
+        function submitOrder(m, t) {
+            const items = Object.entries(cart).filter(([n,v])=>v.quantity >0).map(([n,v])=>({name:n, price:v.price, quantity:v.quantity}));
+            const phone = localStorage.getItem('customer_phone') || null;
+            const payload = { 
+                store_id: storeId, 
+                table_id: tableId, 
+                session_id: sessionId, 
+                items: items, 
+                total_price: t, 
+                payment_method: m,
+                phone: phone 
+            };
+            if(m === 'card') {
+                sessionStorage.setItem('pendingOrderPayload', JSON.stringify(payload));
+                TossPayments("test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq").requestPayment('카드', {
+                    amount: t, orderId: "CH-"+Date.now(), orderName: `${storeId} 주문`,
+                    successUrl: window.location.origin+"/api/toss/success", failUrl: window.location.origin+"/api/toss/fail"
+                });
+            } else { socket.emit('place_order', payload); showNotice("✅ 주문 접수 완료!"); cart={}; updateUI(); }
+        }
+
+        // [보강] AI 음성 합성(TTS) 로직
+        function speakResponse(text) {
+            if (isMuted || !window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            const uttr = new SpeechSynthesisUtterance(text);
+            uttr.lang = 'ko-KR'; uttr.rate = 0.9; uttr.pitch = 1.1;
+            const setVoice = () => {
+                const voices = window.speechSynthesis.getVoices();
+                const femaleVoice = voices.find(v => v.lang === 'ko-KR' && (v.name.includes('Google') || v.name.includes('Female') || v.name.includes('Heami') || v.name.includes('Yuna')));
+                if (femaleVoice) uttr.voice = femaleVoice;
+                window.speechSynthesis.speak(uttr);
+            };
+            if (window.speechSynthesis.getVoices().length > 0) setVoice();
+            else window.speechSynthesis.onvoiceschanged = setVoice;
+        }
+
+        function userSend() {
+            const input = document.getElementById('chat-input');
+            const msg = input.value.trim(); if(!msg) return;
+            sendUserMsg(msg); input.value = '';
+            
+            const history = []; document.querySelectorAll('.bubble').forEach(b => {
+                history.push({ role: b.classList.contains('user') ? 'user' : 'assistant', content: b.innerText });
+            });
+            const slicedHistory = history.slice(-6);
+
+            const thinking = document.createElement('div');
+            thinking.className = 'bubble bot';
+            thinking.innerHTML = `<div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+            chatWin.appendChild(thinking);
+            chatWin.scrollTop = chatWin.scrollHeight;
+
+            fetch(`/api/${storeId}/chat-order`, { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({ 
+                    message: msg, 
+                    cart: cart, 
+                    history: slicedHistory, 
+                    opened_categories: Array.from(openedCats),
+                    visible_info: getVisibleInfo() 
+                }) 
+            })
+            .then(r => r.json()).then(data => {
+                thinking.remove();
+                sendBotMsg(data.reply);
+                speakResponse(data.reply); // [추가] AI 보이스 출력
+                
+                if (data.action) {
+                    const action = data.action; const targetName = (action.name || "").trim().toLowerCase();
+                    if ((action.type === 'add_item' || action.type === 'remove_item') && targetName) {
+                        let foundItem = null; for(let cat in menuData) { foundItem = menuData[cat].find(i => i.name.trim().toLowerCase() === targetName); if(foundItem) break; }
+                        if(!foundItem) { for(let cat in menuData) { foundItem = menuData[cat].find(i => i.name.trim().toLowerCase().includes(targetName) || targetName.includes(i.name.trim().toLowerCase())); if(foundItem) break; } }
+                        if(foundItem) { changeQty(foundItem.name, foundItem.price, (action.type === 'add_item' ? (action.quantity || 1) : -(action.quantity || 1))); showNotice(`✨ ${foundItem.name} 반영`); }
+                    } else if (action.type === 'show_category') {
+                        const realCat = Object.keys(menuData).find(c => c.toLowerCase().includes(targetName) || targetName.includes(c.toLowerCase()));
+                        if(realCat) {
+                            document.querySelectorAll('.cat-chip').forEach(el => el.classList.remove('active'));
+                            document.getElementById(`chip-${realCat}`)?.classList.add('active');
+                            showMenu(realCat);
+                        }
+                    } else if (action.type === 'go_to_payment') { showSummary(); }
+                }
+            }).catch(() => { 
+                thinking.remove();
+                showNotice("⚠️ 통신 실패: 서버 연결을 확인해 주세요.", true);
+                speakResponse("통신에 실패했습니다. 점원을 불러주세요.");
+            });
+        }
+
+        function getVisibleInfo() {
+            let info = "";
+            // 1. 활성 요소 (카테고리 등)
+            const actives = document.querySelectorAll('.active, .selected, .cat-chip.active');
+            actives.forEach(el => {
+                const text = el.innerText.trim().split('\n')[0];
+                if (text) info += `[활성: ${text}] `;
+            });
+            // 2. 체크박스/실버모드 등 상태
+            const checks = document.querySelectorAll('input[type="checkbox"]');
+            checks.forEach(c => {
+                const label = c.closest('label')?.innerText.trim() || c.nextElementSibling?.innerText.trim() || "항목";
+                info += `[상태: ${label}=${c.checked ? 'ON' : 'OFF'}] `;
+            });
+            // 3. 일반 텍스트 요약
+            const main = document.body;
+            info += "\n" + main.innerText.replace(/\s+/g, ' ').substring(0, 800);
+            return info;
+        }
+
+        function toggleVoice() {
+            const btn = document.getElementById('mic-btn');
+            const caption = document.getElementById('live-caption');
+            if(btn.classList.contains('listening')) { if(rec) rec.stop(); return; }
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if(!SR) return showNotice('음성 인식 미지원 환경', true);
+            rec = new SR(); rec.lang='ko-KR';
+            rec.interimResults = true;
+
+            rec.onstart = () => {
+                window.speechSynthesis.cancel();
+                btn.classList.add('listening');
+                if(caption) { caption.style.display = 'block'; caption.innerText = "듣고 있어요..."; }
+            };
+            rec.onend = () => {
+                btn.classList.remove('listening');
+                if(caption) setTimeout(() => { caption.style.display = 'none'; }, 2000);
+            };
+            rec.onresult = (e) => { 
+                let interim = "";
+                for (let i = e.resultIndex; i < e.results.length; ++i) {
+                    if (e.results[i].isFinal) {
+                        document.getElementById('chat-input').value = e.results[i][0].transcript;
+                        userSend(); 
+                    } else {
+                        interim += e.results[i][0].transcript;
+                    }
+                }
+                if(caption && interim) caption.innerText = interim;
+            };
+            rec.start();
+        }
+
+        function showNotice(msg, isError = false) {
+            const div = document.createElement('div');
+            div.style.background = isError ? '#ff4d4d' : 'var(--coffee-accent)';
+            div.style.color = '#fff'; div.style.padding = '8px 20px'; div.style.borderRadius = '20px'; 
+            div.style.marginBottom = '8px'; div.style.fontSize = '0.85rem'; div.innerText = msg;
+            document.getElementById('notice-area').appendChild(div);
+            setTimeout(() => div.remove(), 2500);
+        }
+
+        function quickService(c) { fetch(`/api/${storeId}/service_request`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ content: c, table_id: tableId }) }); showNotice('직원을 호출했습니다.'); }
+
+        // 포인트 적립 관련 로직
+        function openPointModal() {
+            const modal = document.getElementById('point-modal');
+            const input = document.getElementById('point-phone');
+            input.value = localStorage.getItem('customer_phone') || '';
+            modal.style.display = 'flex';
+            input.focus();
+        }
+        function closePointModal() {
+            document.getElementById('point-modal').style.display = 'none';
+        }
+        function savePointPhone() {
+            const val = document.getElementById('point-phone').value.replace(/[^0-9]/g, '');
+            if (val.length < 10) return alert('정확한 전화번호를 입력해주세요.');
+            localStorage.setItem('customer_phone', val);
+            showNotice("✅ 포인트 적립 번호가 등록되었습니다.");
+            closePointModal();
+        }
+        // 전화번호 하이픈 자동 삽입
+        document.getElementById('point-phone').oninput = function(e) {
+            let v = e.target.value.replace(/[^0-9]/g, '');
+            if (v.length > 3 && v.length <= 7) v = v.slice(0,3) + '-' + v.slice(3);
+            else if (v.length > 7) v = v.slice(0,3) + '-' + v.slice(3,7) + '-' + v.slice(7);
+            e.target.value = v;
+        };
+
+        initFlow();
+    </script>
+</body>
+</html>

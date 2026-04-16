@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ store.name }} - 계좌이체 안내</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700;900&display=swap">
+    <style>
+        body {
+            background-color: #0F0F0F;
+            color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+            font-family: 'Pretendard', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .container {
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 30px 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .icon { font-size: 3.5rem; margin-bottom: 20px; }
+        .store-name { color: #D4AF37; font-size: 1.5rem; font-weight: 900; margin-bottom: 5px; }
+        .title { font-size: 1.1rem; margin-bottom: 30px; opacity: 0.8; }
+        
+        .bank-card {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 25px;
+            border-radius: 15px;
+            border: 1px solid #444;
+            margin-bottom: 30px;
+        }
+        .bank-name { font-size: 1rem; color: #888; margin-bottom: 8px; }
+        .account-no { font-size: 1.4rem; font-weight: bold; color: #fff; margin-bottom: 10px; letter-spacing: 0.5px; }
+        .account-holder { font-size: 1.1rem; color: #D4AF37; }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 18px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            transition: transform 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-toss { background: #0064ff; color: white; }
+        .btn-copy { background: #333; color: white; }
+        
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            background: rgba(212, 175, 55, 0.95);
+            color: #000;
+            padding: 10px 25px;
+            border-radius: 20px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🏦</div>
+        <div class="store-name">{{ store.name }}</div>
+        <div class="title">무통장 입금 계좌 안내</div>
+        
+        {% if store.bank_name and store.account_no %}
+        <div class="bank-card">
+            <div class="bank-name">{{ store.bank_name }}</div>
+            <div id="acc-no" class="account-no">{{ store.account_no }}</div>
+            <div class="account-holder">예금주: {{ store.account_holder or store.name }}</div>
+        </div>
+        
+        {% set toss_url = "supertoss://send?bank=" ~ store.bank_name ~ "&accountNo=" ~ store.account_no %}
+        {% if amount %}{% set toss_url = toss_url ~ "&amount=" ~ amount %}{% endif %}
+        {% if memo %}{% set toss_url = toss_url ~ "&memo=" ~ memo %}{% endif %}
+        
+        <a href="{{ toss_url }}" class="btn btn-toss">토스로 바로 송금</a>
+        <button onclick="copyAccount()" class="btn btn-copy">계좌번호 복사</button>
+
+        {% if order_id %}
+        <div style="margin-top: 30px; text-align: left; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1);">
+            <div style="font-weight: bold; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.2rem;">📝</span> 현금영수증 신청
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+                <label style="flex: 1; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; text-align: center; cursor: pointer; border: 1px solid transparent;" id="label-personal">
+                    <input type="radio" name="cr_type" value="personal" style="display: none;" onchange="updateCRType('personal')"> 개인소득공제
+                </label>
+                <label style="flex: 1; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; text-align: center; cursor: pointer; border: 1px solid transparent;" id="label-business">
+                    <input type="radio" name="cr_type" value="business" style="display: none;" onchange="updateCRType('business')"> 사업자증빙
+                </label>
+            </div>
+
+            <div id="cr-input-group" style="display: none;">
+                <input type="tel" id="cr_number" placeholder="휴대폰 번호 또는 사업자 번호" 
+                       style="width: 100%; padding: 12px; background: #000; border: 1px solid #444; color: #fff; border-radius: 8px; box-sizing: border-box; margin-bottom: 10px;">
+                <button onclick="submitCashReceipt()" class="btn" style="background: var(--primary, #3b82f6); color: white; padding: 12px; font-size: 0.95rem; margin-bottom: 0;">신청하기</button>
+            </div>
+        </div>
+        {% endif %}
+
+        <div style="margin-top: 20px;">
+            <a href="/" style="color: #666; text-decoration: none; font-size: 0.85rem;">← 매장 화면으로 돌아가기</a>
+        </div>
+        {% else %}
+        <div style="padding: 40px; opacity: 0.5;">계좌 정보가 등록되지 않았습니다.</div>
+        {% endif %}
+    </div>
+
+    <div id="toast" class="toast">복사 완료!</div>
+
+    <script>
+        function copyAccount() {
+            const acc = document.getElementById('acc-no').innerText;
+            navigator.clipboard.writeText(acc).then(() => {
+                const toast = document.getElementById('toast');
+                toast.style.opacity = '1';
+                setTimeout(() => toast.style.opacity = '0', 2000);
+            });
+        }
+
+        let selectedType = '';
+        function updateCRType(type) {
+            selectedType = type;
+            document.getElementById('cr-input-group').style.display = 'block';
+            document.getElementById('label-personal').style.borderColor = type === 'personal' ? '#3b82f6' : 'transparent';
+            document.getElementById('label-business').style.borderColor = type === 'business' ? '#3b82f6' : 'transparent';
+            document.getElementById('label-personal').style.background = type === 'personal' ? 'rgba(59,130,246,0.1)' : 'rgba(255,255,255,0.05)';
+            document.getElementById('label-business').style.background = type === 'business' ? 'rgba(59,130,246,0.1)' : 'rgba(255,255,255,0.05)';
+        }
+
+        async function submitCashReceipt() {
+            const number = document.getElementById('cr_number').value.trim();
+            if(!number) return alert('번호를 입력해 주세요.');
+            
+            try {
+                const res = await fetch(`/api/order/{{ order_id }}/cash_receipt`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ type: selectedType, number: number })
+                });
+                if(res.ok) {
+                    alert('현금영수증 신청이 완료되었습니다.');
+                    location.reload();
+                }
+            } catch(e) { alert('오류가 발생했습니다.'); }
+        }
+    </script>
+</body>
+</html>

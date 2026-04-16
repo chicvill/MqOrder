@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ store.name }} - 주방</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ range(1, 9999) | random }}">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        :root {
+            --surface-dark: #121212;
+            --accent-gold: #f1c40f;
+            --border-muted: rgba(255, 255, 255, 0.08);
+        }
+        /* [실버 개편] 주방 카드 스타일 (가독성 끝판왕) */
+        .table-card {
+            background: #000;
+            border: 3px solid #333;
+            border-radius: 25px;
+            padding: 30px;
+            position: relative;
+            animation: fadeIn 0.4s ease-out;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .table-card h3 {
+            font-size: 2.2rem;
+            margin: 0 0 15px 0;
+            color: #f1c40f;
+            font-weight: 1000;
+        }
+        .status-badge {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            font-size: 1.2rem;
+            padding: 6px 20px;
+            border-radius: 30px;
+            font-weight: 800;
+            background: #333;
+            color: #fff;
+        }
+        .items-list {
+            margin: 20px 0;
+            padding: 20px 0;
+            border-top: 2px solid #222;
+            border-bottom: 3px dashed #f1c40f;
+        }
+        .kitchen-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 25px;
+            padding: 25px;
+        }
+        .item-row span:first-child { font-size: 2.5rem; font-weight: 1000; color: #fff; }
+        .item-row span:last-child { font-size: 3.5rem; font-weight: 1000; color: #f1c40f; }
+
+        .action-btn {
+            width: 100%;
+            padding: 30px;
+            border: none;
+            border-radius: 20px;
+            font-size: 2rem;
+            font-weight: 1000;
+            cursor: pointer;
+            transition: 0.2s;
+            background: #f1c40f;
+            color: #000;
+            box-shadow: 0 8px 0 #b3920b;
+        }
+        .action-btn:active { transform: translateY(4px); box-shadow: 0 4px 0 #b3920b; }
+        
+        .elapsed-timer {
+            font-weight: 1000;
+            font-size: 1.8rem;
+            padding: 8px 20px;
+            border-radius: 12px;
+            background: #1a1a1a;
+        }
+        .timer-safe { color: #2ecc71; }
+        .timer-warning { color: #f1c40f; animation: pulse 1s infinite; }
+        .timer-danger { color: #ff4d4d; animation: pulse 0.5s infinite; font-weight: 1000; }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* 취소 알림 스타일 */
+        .cancel-toast {
+            position: fixed;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ff4d4d;
+            color: white;
+            padding: 20px 40px;
+            border-radius: 12px;
+            font-size: 1.5rem;
+            font-weight: 900;
+            z-index: 9999;
+            box-shadow: 0 0 40px rgba(255, 77, 77, 0.5);
+            animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        @keyframes bounceIn {
+            0% { transform: translateX(-50%) translate3d(0, -200px, 0); opacity: 0; }
+            60% { transform: translateX(-50%) translate3d(0, 25px, 0); opacity: 1; }
+            100% { transform: translateX(-50%) translate3d(0, 0, 0); }
+        }
+    </style>
+</head>
+<body>
+    <header style="background: #000; border-bottom: 1px solid var(--border-muted); padding: 20px 30px;">
+        <h1 style="color: #fff; font-size: 1.4rem; font-weight: 800;">주방 대시보드</h1>
+        <div id="connection-status" style="font-size: 0.85rem; color: #2ecc71; margin-top: 4px; font-weight: 600;">● 서버 실시간 연결됨 (상점: {{ store.id }})</div>
+    </header>
+
+    <div class="container" style="padding: 15px;">
+        <div id="kitchen-orders" class="dashboard-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 30px; align-items: start;">
+            <!-- 주문 목록 동적 생성 -->
+        </div>
+    </div>
+
+    <!-- 알림음 -->
+    <audio id="chime" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
+    <audio id="cancel-chime" src="https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3"></audio>
+
+    <script>
+        const socket = io({
+            transports: ['websocket', 'polling'],
+            upgrade: true
+        });
+
+        function onConnect() {
+            console.log('Kitchen Socket Connected!');
+            socket.emit('join', { store_id: '{{ store.id }}' });
+            document.getElementById('connection-status').innerText = '● 서버 연결됨';
+            document.getElementById('connection-status').style.color = '#2ecc71';
+            loadInitialOrders();
+        }
+
+        socket.on('connect', onConnect);
+        let orders = [];
+
+        socket.on('disconnect', () => {
+            document.getElementById('connection-status').innerText = '○ 연결 끊김';
+            document.getElementById('connection-status').style.color = '#e74c3c';
+        });
+
+        socket.on('connect_error', (error) => {
+            console.error('Kitchen Socket Error:', error);
+        });
+
+        socket.on('new_order', (order) => {
+            console.log('New Order Received:', order);
+            const index = orders.findIndex(o => String(o.id) === String(order.id));
+            if (index === -1 && order.status === 'pending') {
+                orders.push(order);
+                playChime();
+                renderOrders();
+            }
+        });
+
+        socket.on('order_status_update', (order) => {
+            console.log('Order Status Updated:', order);
+            const index = orders.findIndex(o => String(o.id) === String(order.id));
+            
+            if (order.status === 'cancelled') {
+                playCancelChime();
+                showCancelAlert(`테이블 ${order.table_id} 주문 취소!!`);
+            }
+
+            if (index > -1) {
+                if (order.status === 'ready' || order.status === 'served' || order.status === 'paid') {
+                    orders.splice(index, 1);
+                } else if (order.status === 'cancelled') {
+                    // 취소건은 즉시 삭제하지 않고 상태만 업데이트하여 목록에 유지
+                    orders[index] = order;
+                } else {
+                    orders[index] = order;
+                }
+                renderOrders();
+            } else if (order.status === 'cancelled') {
+                // 목록에 없던 주문이 취소되어 들어온 경우 (드문 케이스지만 대응)
+                orders.push(order);
+                renderOrders();
+            }
+        });
+
+        function showCancelAlert(msg) {
+            const toast = document.createElement('div');
+            toast.className = 'cancel-toast';
+            toast.innerText = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
+        }
+
+        function playCancelChime() {
+            const audio = document.getElementById('cancel-chime');
+            audio.play().catch(e => console.log('Cancel audio play blocked'));
+        }
+
+        function playChime() {
+            const audio = document.getElementById('chime');
+            audio.play().catch(e => console.log('Audio play blocked'));
+        }
+
+        socket.on('table_status_update', (data) => {
+            if (data.status === 'paid') {
+                orders = orders.filter(o => String(o.table_id) !== String(data.table_id));
+                renderOrders();
+            }
+        });
+
+        // 초기 데이터 로드
+        async function loadInitialOrders() {
+            try {
+                const res = await fetch('/api/{{ store.id }}/orders');
+                const data = await res.json();
+                // pending인 주문들만 가져옴 (cancelled는 세션에 따라 다를 수 있으나 조리 대기 위주)
+                orders = data.filter(o => o.status === 'pending');
+                renderOrders();
+            } catch (e) {
+                console.error('Failed to load initial orders:', e);
+            }
+        }
+
+        window.onload = loadInitialOrders;
+
+        function renderOrders() {
+            const container = document.getElementById('kitchen-orders');
+            container.innerHTML = '';
+            
+            // 조리 중인 주문 + 확인 전 취소 주문 표시
+            const displayOrders = orders.filter(o => o.status === 'pending' || o.status === 'cancelled');
+            
+            if (displayOrders.length === 0) {
+                container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 100px; color: var(--text-muted);">현재 대기 중인 주문이 없습니다.</div>';
+                return;
+            }
+
+            displayOrders.forEach(order => {
+                const isCancelled = order.status === 'cancelled';
+                const orderNoDisplay = order.order_no ? order.order_no : (order.session_id ? order.session_id : '현장');
+                
+                const card = document.createElement('div');
+                card.className = `table-card ${isCancelled ? 'cancelled-card' : ''}`;
+                if (isCancelled) {
+                    card.style.background = 'rgba(255, 77, 77, 0.1)';
+                    card.style.borderColor = '#ff4d4d';
+                    card.style.boxShadow = 'inset 0 0 20px rgba(255, 77, 77, 0.2)';
+                }
+
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <div style="font-size: 1.8rem; font-weight: 1000; color: #fff;">테이블 : #${order.table_id}</div>
+                        <div class="status-badge" style="${isCancelled ? 'background: #ff4d4d; color: #fff;' : ''}">${isCancelled ? '취소됨' : '조리'}</div>
+                    </div>
+                    <div class="elapsed-timer" data-start="${order.created_at}" style="margin-bottom:10px;">${isCancelled ? '실패된 주문' : '-분 경과'}</div>
+                    
+                    <div class="items-list" style="margin: 5px 0 15px 0; padding: 10px 0 15px 0; border-top: none; border-bottom: 2px dashed ${isCancelled ? '#ff4d4d' : 'rgba(212, 175, 55, 0.4)'};">
+                        ${order.items.map(i => `
+                            <div class="item-row" style="font-size: 2rem; font-weight: 900; color: #fff; margin-bottom: 12px; display: flex; align-items: center; ${isCancelled || i.status === 'cancelled' ? 'text-decoration: line-through; opacity: 0.4;' : ''}">
+                                <span>${i.name}</span>
+                                <span style="color: ${isCancelled ? '#ff4d4d' : '#f1c40f'}; font-size: 2.4rem;">${i.quantity}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 15px; color: #999;">
+                        <span>테이블 :</span>
+                        <span style="font-size: 1.4rem; font-weight: bold; color: ${isCancelled ? '#ff4d4d' : '#ccc'};">#${order.table_id}</span>
+                        <span style="font-size: 0.9rem; margin-left: auto;">(주문 #${orderNoDisplay})</span>
+                    </div>
+                    
+                    <button class="action-btn" style="${isCancelled ? 'background: #333; color: #ff4d4d; border: 1px solid #ff4d4d;' : ''}" 
+                            onclick="${isCancelled ? `acknowledgeCancel('${order.id}')` : `completeOrder('${order.id}')`}">
+                        ${isCancelled ? '취소 확인 (삭제)' : '조리 완료'}
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function acknowledgeCancel(orderId) {
+            const index = orders.findIndex(o => String(o.id) === String(orderId));
+            if (index > -1) {
+                orders.splice(index, 1);
+                renderOrders();
+            }
+        }
+
+        function completeOrder(orderId) {
+            console.log('Completing Order:', orderId);
+            socket.emit('set_ready', { order_id: orderId });
+            
+            // 즉시 UI 반영
+            const orderIndex = orders.findIndex(o => String(o.id) === String(orderId));
+            if (orderIndex > -1) {
+                orders.splice(orderIndex, 1);
+                renderOrders();
+            }
+        }
+
+        function updateTimers() {
+            document.querySelectorAll('.elapsed-timer').forEach(el => {
+                const startStr = el.dataset.start;
+                if (!startStr) return;
+                
+                const start = new Date(startStr);
+                const now = new Date();
+                const diffMins = Math.floor((now - start) / 60000);
+                
+                el.innerText = `${diffMins}분 경과`;
+                el.className = 'elapsed-timer';
+                if (diffMins < 10) el.classList.add('timer-safe');
+                else if (diffMins < 20) el.classList.add('timer-warning');
+                else el.classList.add('timer-danger');
+            });
+        }
+        setInterval(updateTimers, 10000); // 10초마다 갱신
+        setInterval(updateTimers, 1000);  // 처음 로드 시 즉시 반영을 위해 1회성 아니고 주기적으로 더 자주 돌아도 됨
+        // 하지만 렌더링 성능을 위해 10초가 적당합니다.
+        setTimeout(updateTimers, 500); // 로드 직후 1회 실행
+    </script>
+</body>
+</html>

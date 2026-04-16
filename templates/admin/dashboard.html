@@ -1,0 +1,172 @@
+{% extends "admin/base.html" %}
+{% set active_page = 'dashboard' %}
+
+{% block title %}MQnet Central Hub | 대시보드{% endblock %}
+
+{% block extra_style %}
+    /* Stats Cards - Responsive Grid */
+    .stats-grid { 
+        display: grid; 
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+        gap: 1.5rem; margin-bottom: 3rem; 
+    }
+    .stat-card { 
+        background: var(--card); border: 1px solid var(--border); border-radius: 20px; 
+        padding: 1.5rem; display: flex; align-items: center; gap: 15px; 
+        transition: 0.3s;
+    }
+    .stat-card:hover { transform: translateY(-5px); border-color: var(--primary); }
+    .stat-icon { 
+        width: 48px; height: 48px; border-radius: 12px; 
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .stat-info h4 { margin: 0; font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-info div { 
+        font-size: 1.25rem; font-weight: 800; margin-top: 2px; 
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px;
+    }
+
+    /* Store List Header */
+    .section-card { background: var(--card); border: 1px solid var(--border); border-radius: 24px; padding: 2rem; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 10px; }
+    
+    .store-item { 
+        display: flex; justify-content: space-between; align-items: center; 
+        padding: 15px 10px; border-bottom: 1px solid var(--border); transition: 0.2s;
+        flex-wrap: wrap; gap: 10px;
+    }
+    .store-item:hover { background: #33415555; }
+    
+    .badge { padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; }
+    .badge-success { background: #10b98122; color: #10b981; }
+    
+    .btn-config { 
+        background: var(--primary); color: white; text-decoration: none; 
+        padding: 8px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; 
+        display: flex; align-items: center; gap: 6px; white-space: nowrap;
+    }
+    .btn-icon { 
+        background: var(--warning); color: white; text-decoration: none; 
+        width: 34px; height: 34px; border-radius: 8px; 
+        display: flex; align-items: center; justify-content: center;
+        transition: 0.2s;
+    }
+    .btn-icon:hover { transform: scale(1.1); filter: brightness(1.1); }
+
+    @media (max-width: 640px) {
+        .stat-card { padding: 1rem; gap: 10px; }
+        .store-item { flex-direction: column; align-items: flex-start; }
+        .btn-config { width: 100%; justify-content: center; }
+    }
+{% endblock %}
+
+{% block content %}
+    <div class="header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem; flex-wrap: wrap; gap: 15px;">
+        <h1>운영 요약 브리핑</h1>
+        <div style="display:flex; align-items:center; gap:10px;">
+            {% if session['role'] == 'staff' %}
+            <button onclick="checkCommission()" class="btn-manual" style="background:#fef3c7; color:#92400e; border:none; cursor:pointer; font-weight:800;">
+                <i data-lucide="wallet" size="16"></i> 수당 확인
+            </button>
+            {% endif %}
+            <a href="/admin/manual/staff" class="btn-manual" style="background:#dcfce7; color:#166534; text-decoration:none; display:flex; align-items:center; gap:5px; font-weight:800;">
+                <i data-lucide="graduation-cap" size="16"></i> 매뉴얼
+            </a>
+            <button onclick="location.reload()" style="background:#334155; border:none; border-radius:10px; padding:8px; cursor:pointer; color:white;"><i data-lucide="refresh-cw" size="16"></i></button>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#3b82f622; color:var(--primary);"><i data-lucide="bar-chart-3"></i></div>
+            <div class="stat-info"><h4>누적 매출액</h4><div title="{{ total_revenue }}">{{ "{:,.0f}".format(total_revenue) }}원</div></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#10b98122; color:var(--accent);"><i data-lucide="shopping-cart"></i></div>
+            <div class="stat-info"><h4>주문 수량</h4><div>{{ total_orders }}건</div></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#f59e0b22; color:var(--warning);"><i data-lucide="store"></i></div>
+            <div class="stat-info"><h4>활성 가맹점</h4><div>{{ total_stores }}개</div></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#ef444422; color:var(--danger);"><i data-lucide="users"></i></div>
+            <div class="stat-info"><h4>총 유저</h4><div>{{ total_users }}명</div></div>
+        </div>
+    </div>
+
+    <!-- ⚡ Global Admin Command Center -->
+    <div style="margin-bottom: 3rem;">
+        <h3 style="font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px;">
+            <span style="width: 20px; height: 1px; background: var(--border);"></span> ADMIN COMMAND
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
+            <a href="/admin/performance" class="stat-card" style="text-decoration:none; padding: 1.25rem;">
+                <div class="stat-icon" style="background:rgba(59, 130, 246, 0.1); color:var(--primary);"><i data-lucide="bar-chart-big"></i></div>
+                <div class="stat-info"><h4>성과 리포트</h4><div style="font-size:1rem;">통합 실적</div></div>
+            </a>
+            <a href="/admin/stores" class="stat-card" style="text-decoration:none; padding: 1.25rem;">
+                <div class="stat-icon" style="background:rgba(245, 158, 11, 0.1); color:var(--warning);"><i data-lucide="layout-grid"></i></div>
+                <div class="stat-info"><h4>업소 관리</h4><div style="font-size:1rem;">매장 제어</div></div>
+            </a>
+            <a href="/admin/staff" class="stat-card" style="text-decoration:none; padding: 1.25rem;">
+                <div class="stat-icon" style="background:rgba(16, 185, 129, 0.1); color:var(--accent);"><i data-lucide="contact-2"></i></div>
+                <div class="stat-info"><h4>직원/급여</h4><div style="font-size:1rem;">정산 관리</div></div>
+            </a>
+            {% if session['role'] == 'admin' %}
+            <a href="/admin/users" class="stat-card" style="text-decoration:none; padding: 1.25rem;">
+                <div class="stat-icon" style="background:rgba(147, 51, 234, 0.1); color:#a855f7;"><i data-lucide="user-cog"></i></div>
+                <div class="stat-info"><h4>계정 제어</h4><div style="font-size:1rem;">유저 관리</div></div>
+            </a>
+            <a href="/admin/billing" class="stat-card" style="text-decoration:none; padding: 1.25rem;">
+                <div class="stat-icon" style="background:rgba(239, 68, 68, 0.1); color:var(--danger);"><i data-lucide="credit-card"></i></div>
+                <div class="stat-info"><h4>빌링/구독</h4><div style="font-size:1rem;">정산/과금</div></div>
+            </a>
+            <a href="/admin/settings" class="stat-card" style="text-decoration:none; padding: 1.25rem;">
+                <div class="stat-icon" style="background:rgba(71, 85, 105, 0.1); color:var(--text-dim);"><i data-lucide="settings-2"></i></div>
+                <div class="stat-info"><h4>시스템 정책</h4><div style="font-size:1rem;">전역 설정</div></div>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 🏥 Managed Store List -->
+    <div class="section-card">
+        <div class="section-header">
+            <h2 style="margin:0; font-size:0.8rem; color:var(--text-dim); text-transform: uppercase; letter-spacing: 1.5px; display: flex; align-items: center; gap: 8px;">
+                <span style="width: 20px; height: 1px; background: var(--border);"></span> MANAGED STORES ({{ stores|length }})
+            </h2>
+        </div>
+        
+        <div class="store-list">
+            {% for store in stores %}
+            <div class="store-item">
+                <div style="display:flex; align-items:center; gap:15px;">
+                    <div style="width:10px; height:10px; border-radius:50%; background:#10b981; box-shadow: 0 0 10px #10b981;"></div>
+                    <div>
+                        <div style="font-weight:700; font-size:0.95rem;">{{ store.name }}</div>
+                        <div style="font-size:0.75rem; color:var(--text-dim);">@{{ store.id }}</div>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span class="badge badge-success">Operational</span>
+                    <a href="/{{ store.id }}/qr-print" target="_blank" class="btn-icon" title="QR 출력" style="background: #334155;">
+                        <i data-lucide="printer" size="14"></i>
+                    </a>
+                    <a href="/admin/stores/{{ store.id }}/config" class="btn-config">
+                        <i data-lucide="settings" size="14"></i> 관리
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    function checkCommission() {
+        alert("현재까지의 예상 수당을 계산하는 중입니다...");
+    }
+</script>
+{% endblock %}

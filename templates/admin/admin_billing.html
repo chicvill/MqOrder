@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>MQnet Admin — 구독 현황</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* ── 요약 통계 카드 ── */
+        .stat-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.8rem;
+            margin-bottom: 1.5rem;
+        }
+        .stat-card {
+            background: var(--bg-glass);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1.2rem;
+            text-align: center;
+        }
+        .stat-card.highlight {
+            background: linear-gradient(135deg, rgba(0,242,255,0.08), rgba(59,130,246,0.05));
+            border-color: var(--border-accent);
+        }
+        .stat-num {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .stat-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 5px; }
+
+        /* ── 필터 탭 ── */
+        .filter-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            overflow-x: auto;
+            scrollbar-width: none;
+            padding-bottom: 2px;
+        }
+        .filter-tabs::-webkit-scrollbar { display: none; }
+        .filter-tab {
+            padding: 0.5rem 1rem;
+            border-radius: 100px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            border: 1px solid var(--border);
+            background: var(--bg-glass);
+            color: var(--text-dim);
+            transition: all 0.2s;
+        }
+        .filter-tab.active {
+            background: var(--accent);
+            color: #000;
+            border-color: var(--accent);
+        }
+
+        /* ── 매장 행 ── */
+        .store-row {
+            background: var(--bg-glass);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 1rem 1.2rem;
+            margin-bottom: 0.7rem;
+            transition: border-color 0.2s;
+        }
+        .store-row.expired  { border-left: 3px solid var(--danger); }
+        .store-row.trial    { border-left: 3px solid #f97316; }
+        .store-row.active   { border-left: 3px solid var(--success); }
+
+        .store-row-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.6rem;
+        }
+        .store-name { font-weight: 700; font-size: 0.95rem; }
+        .store-id   { font-size: 0.75rem; color: var(--text-muted); }
+
+        .store-row-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .days-chip {
+            font-size: 0.78rem;
+            font-weight: 700;
+            padding: 0.2rem 0.7rem;
+            border-radius: 100px;
+        }
+        .days-chip.ok      { background: rgba(34,211,165,0.12); color: var(--success); }
+        .days-chip.warn    { background: rgba(251,191,36,0.12);  color: #fbbf24; }
+        .days-chip.danger  { background: rgba(255,92,92,0.12);   color: var(--danger); }
+        .days-chip.trial   { background: rgba(249,115,22,0.12);  color: #fb923c; }
+        .days-chip.expired { background: rgba(255,92,92,0.15);   color: var(--danger); font-weight:800; }
+
+        .action-btns {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .btn-extend {
+            font-size: 0.78rem;
+            padding: 0.35rem 0.8rem;
+            background: rgba(0,242,255,0.1);
+            color: var(--accent);
+            border: 1px solid var(--border-accent);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-extend:hover { background: rgba(0,242,255,0.2); }
+        .btn-block {
+            font-size: 0.78rem;
+            padding: 0.35rem 0.8rem;
+            background: rgba(255,92,92,0.08);
+            color: var(--danger);
+            border: 1px solid rgba(255,92,92,0.25);
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* ── 연장 모달 ── */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 500;
+            display: flex;
+            align-items: flex-end;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s;
+        }
+        .modal-overlay.open {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .modal-sheet {
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+            background: #0d1627;
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+            padding: 1.5rem;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .modal-overlay.open .modal-sheet { transform: translateY(0); }
+        .modal-handle {
+            width: 40px; height: 4px;
+            border-radius: 2px;
+            background: var(--border);
+            margin: 0 auto 1.5rem;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 0.7rem;
+            margin-bottom: 1rem;
+        }
+        .search-box input {
+            flex: 1;
+            padding: 0.7rem 1rem;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-size: 0.9rem;
+            outline: none;
+        }
+        .search-box input:focus { border-color: var(--accent); }
+    </style>
+</head>
+<body>
+<div class="app-shell">
+
+    <!-- Header -->
+    <header class="app-header">
+        <a href="/portal/home" class="app-logo" style="font-size:1.1rem; display:flex; align-items:center; gap:0.5rem; text-decoration:none;">
+            <i class="fa-solid fa-arrow-left" style="-webkit-text-fill-color:#a0aec0; font-size:0.95rem;"></i>
+            <span>구독 현황</span>
+        </a>
+        <span class="badge badge-cyan">Admin</span>
+    </header>
+
+    <div class="page-content">
+
+        <!-- 요약 통계 -->
+        <div class="stat-row">
+            <div class="stat-card highlight" style="grid-column: span 2;">
+                <div class="stat-num" style="color:var(--accent);">₩{{ '{:,}'.format(total_revenue) }}</div>
+                <div class="stat-label">이번 달 구독 수익</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num" style="color:var(--success);">{{ active_count }}</div>
+                <div class="stat-label">활성 구독</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num" style="color:#f97316;">{{ trial_count }}</div>
+                <div class="stat-label">체험 중</div>
+            </div>
+            <div class="stat-card" style="grid-column: span 2;">
+                <div class="stat-num" style="color:var(--danger);">{{ expired_count }}</div>
+                <div class="stat-label">만료됨 (결제 필요)</div>
+            </div>
+        </div>
+
+        <!-- 검색 -->
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="매장명 또는 ID 검색..." oninput="filterRows()">
+        </div>
+
+        <!-- 필터 탭 -->
+        <div class="filter-tabs">
+            <div class="filter-tab active" onclick="setFilter('all', this)">전체 ({{ store_data|length }})</div>
+            <div class="filter-tab" onclick="setFilter('expired', this)">만료 ({{ expired_count }})</div>
+            <div class="filter-tab" onclick="setFilter('trial', this)">체험 ({{ trial_count }})</div>
+            <div class="filter-tab" onclick="setFilter('active', this)">활성 ({{ active_count }})</div>
+        </div>
+
+        <!-- 매장 목록 -->
+        <div id="storeList">
+        {% for sd in store_data %}
+        <div class="store-row {{ sd.billing_status }}" data-status="{{ sd.billing_status }}"
+             data-name="{{ sd.store.name }}" data-id="{{ sd.store.id }}">
+            <div class="store-row-top">
+                <div>
+                    <div class="store-name">{{ sd.store.name }}</div>
+                    <div class="store-id">{{ sd.store.id }}</div>
+                </div>
+                <div>
+                    {% if sd.billing_status == 'expired' %}
+                    <span class="days-chip expired">만료됨</span>
+                    {% elif sd.billing_status == 'trial' %}
+                    <span class="days-chip trial">체험 D-{{ sd.days_left }}</span>
+                    {% elif sd.days_left is not none and sd.days_left <= 5 %}
+                    <span class="days-chip danger">D-{{ sd.days_left }}</span>
+                    {% elif sd.days_left is not none and sd.days_left <= 14 %}
+                    <span class="days-chip warn">D-{{ sd.days_left }}</span>
+                    {% elif sd.days_left is not none %}
+                    <span class="days-chip ok">D-{{ sd.days_left }}</span>
+                    {% else %}
+                    <span class="days-chip" style="color:var(--text-muted);">미설정</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="store-row-bottom">
+                <div style="font-size:0.8rem; color:var(--text-muted);">
+                    {% if sd.store.expires_at %}
+                    만기: {{ sd.store.expires_at.strftime('%Y.%m.%d') }}
+                    {% else %}만기일 미설정{% endif %}
+                    {% if sd.month_revenue > 0 %}
+                    · 이달 <span style="color:var(--accent); font-weight:600;">₩{{ '{:,}'.format(sd.month_revenue) }}</span>
+                    {% endif %}
+                </div>
+                <div class="action-btns">
+                    <button class="btn-extend" onclick="openExtend('{{ sd.store.id }}', '{{ sd.store.name }}')">
+                        <i class="fa-solid fa-plus"></i> 연장
+                    </button>
+                    <button class="btn-block" onclick="blockStore('{{ sd.store.id }}')">
+                        <i class="fa-solid fa-ban"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        </div>
+
+    </div><!-- end page-content -->
+</div><!-- end app-shell -->
+
+<!-- 연장 모달 -->
+<div class="modal-overlay" id="extendModal" onclick="closeExtend(event)">
+    <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <h3 style="font-size:1.1rem; margin-bottom:0.3rem;" id="modalTitle">구독 연장</h3>
+        <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:1.5rem;" id="modalSub">무료 연장 기간을 선택하세요.</p>
+
+        <div style="display:grid; grid-template-columns: repeat(3,1fr); gap:0.7rem; margin-bottom:1.5rem;">
+            <button class="btn btn-secondary btn-sm" style="width:100%;" onclick="extend(7)">7일</button>
+            <button class="btn btn-secondary btn-sm" style="width:100%;" onclick="extend(30)">30일</button>
+            <button class="btn btn-secondary btn-sm" style="width:100%;" onclick="extend(90)">90일</button>
+        </div>
+        <div style="display:flex; gap:0.7rem; align-items:center; margin-bottom:1.5rem;">
+            <input type="number" id="customDays" class="form-control" placeholder="직접 입력 (일)" min="1" max="365">
+            <button class="btn btn-primary btn-sm" onclick="extend(parseInt(document.getElementById('customDays').value)||30)">적용</button>
+        </div>
+        <button class="btn btn-secondary" onclick="closeExtend()">취소</button>
+    </div>
+</div>
+
+<script>
+let currentStoreId = null;
+let currentFilter = 'all';
+
+function setFilter(status, el) {
+    currentFilter = status;
+    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    filterRows();
+}
+
+function filterRows() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    document.querySelectorAll('.store-row').forEach(row => {
+        const matchStatus = currentFilter === 'all' || row.dataset.status === currentFilter;
+        const matchSearch = !q || row.dataset.name.toLowerCase().includes(q) || row.dataset.id.toLowerCase().includes(q);
+        row.style.display = (matchStatus && matchSearch) ? '' : 'none';
+    });
+}
+
+function openExtend(storeId, storeName) {
+    currentStoreId = storeId;
+    document.getElementById('modalTitle').textContent = storeName + ' 구독 연장';
+    document.getElementById('modalSub').textContent = '관리자 무료 연장 — 점주 결제 없이 기간을 늘립니다.';
+    document.getElementById('extendModal').classList.add('open');
+}
+
+function closeExtend(e) {
+    if (!e || e.target === document.getElementById('extendModal')) {
+        document.getElementById('extendModal').classList.remove('open');
+    }
+}
+
+async function extend(days) {
+    if (!currentStoreId || !days) return;
+    const res = await fetch(`/api/billing/extend/${currentStoreId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ days })
+    });
+    const data = await res.json();
+    if (data.status === 'success') {
+        const expires = new Date(data.new_expires);
+        const fmt = expires.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+        alert(`✅ ${fmt}까지 연장되었습니다.`);
+        location.reload();
+    } else {
+        alert('오류: ' + data.message);
+    }
+}
+
+async function blockStore(storeId) {
+    if (!confirm(`${storeId} 매장을 차단하시겠습니까? 점주가 접속할 수 없게 됩니다.`)) return;
+    const res = await fetch(`/api/billing/extend/${storeId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ days: -9999 })
+    });
+    alert('처리 완료. 해당 매장 만기일이 과거로 설정되었습니다.');
+    location.reload();
+}
+</script>
+</body>
+</html>

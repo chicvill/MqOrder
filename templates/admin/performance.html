@@ -1,0 +1,158 @@
+{% extends "admin/base.html" %}
+{% set active_page = 'performance' %}
+
+{% block title %}실적 심층 분석 | MQnet Central{% endblock %}
+
+{% block extra_style %}
+<style>
+    /* [스마트 레이아웃] 그리드 시스템 */
+    .dashboard-wrapper { 
+        display: grid; 
+        grid-template-columns: repeat(2, 1fr); 
+        gap: 20px; 
+    }
+    
+    .widget-card { 
+        background: var(--card); border: 2px solid var(--border); border-radius: 20px; 
+        padding: 25px; transition: 0.3s;
+    }
+    .widget-card:hover { border-color: var(--primary); transform: translateY(-3px); }
+
+    .widget-header { 
+        display: flex; justify-content: space-between; align-items: center; 
+        margin-bottom: 25px; border-bottom: 1px solid var(--border); padding-bottom: 15px;
+    }
+    .widget-title { font-size: 1.15rem; font-weight: 900; color: #fff; margin: 0; }
+    
+    /* 데이터 테이블 고도화 */
+    .data-row { margin-bottom: 18px; }
+    .data-info { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 800; font-size: 0.95rem; }
+    
+    .progress-track { width: 100%; height: 10px; background: rgba(255,255,255,0.05); border-radius: 50px; overflow: hidden; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 50px; transition: 1s cubic-bezier(0.4, 0, 0.2, 1); }
+
+    .simple-table { width: 100%; border-collapse: collapse; }
+    .simple-table th { text-align: left; color: #64748b; font-size: 0.75rem; text-transform: uppercase; padding-bottom: 15px; }
+    .simple-table td { padding: 12px 0; border-bottom: 1px solid var(--border); font-weight: 800; font-size: 0.95rem; }
+    .simple-table tr:last-child td { border: none; }
+
+    /* 트렌드 차트 위젯 */
+    .trend-container { 
+        height: 200px; display: flex; align-items: flex-end; gap: 12px; padding-top: 20px; 
+    }
+    .trend-column { 
+        flex: 1; display: flex; flex-direction: column; align-items: center; gap: 10px; 
+    }
+    .bar { 
+        width: 100%; min-height: 5px; border-radius: 10px 10px 5px 5px; 
+        background: var(--primary); opacity: 0.4; transition: 0.3s; cursor: pointer;
+    }
+    .bar:hover { opacity: 1; background: var(--accent); transform: scaleX(1.1); }
+    .day-label { font-size: 0.7rem; color: #64748b; font-weight: 800; }
+
+    @media (max-width: 1024px) { .dashboard-wrapper { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+    <div>
+        <h1 style="font-size: 2rem; font-weight: 950; margin: 0; letter-spacing: -1px;">PERFORMANCE <span style="color:var(--primary);">INSIGHT</span></h1>
+        <p style="margin:0; color: #64748b; font-weight: 700;">실시간 인스턴스 실적 파악 및 데이터 기반 의사결정</p>
+    </div>
+    <button onclick="window.print()" style="background:var(--card); border:1px solid var(--border); border-radius:15px; padding:12px 25px; cursor:pointer; color:white; font-weight:800; display:flex; align-items:center; gap:10px; font-size: 0.95rem;">
+        <i data-lucide="printer" size="20"></i> 인쇄
+    </button>
+</div>
+
+<div class="dashboard-wrapper">
+    <!-- 1. 가맹점별 매출 TOP 5 -->
+    <div class="widget-card">
+        <div class="widget-header">
+            <h3 class="widget-title">가맹점 매출 랭킹</h3>
+            <i data-lucide="award" style="color:var(--warning)"></i>
+        </div>
+        <div class="widget-body">
+            {% set top_stores = (stores | sort(attribute='total_revenue', reverse=True))[:5] if stores else [] %}
+            {% set max_rev = (top_stores[0].total_revenue if top_stores[0].total_revenue else 1) if top_stores else 1 %}
+            
+            {% for s in top_stores %}
+            <div class="data-row">
+                <div class="data-info">
+                    <span>{{ s.name }}</span>
+                    <span style="color:var(--primary);">{{ "{:,.0f}".format(s.total_revenue | default(0)) }}원</span>
+                </div>
+                <div class="progress-track">
+                    {% set current_rev = s.total_revenue | default(0) %}
+                    {% set width_pct = (current_rev / max_rev * 100) | round | int %}
+                    <div class="progress-bar" style="width: {{ width_pct }}%"></div>
+                </div>
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 50px 0; color: #475569;">데이터가 축적되지 않았습니다.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- 2. 직원별 기여도 -->
+    <div class="widget-card">
+        <div class="widget-header">
+            <h3 class="widget-title">영업 파트너 기여도</h3>
+            <i data-lucide="zap" style="color:var(--accent)"></i>
+        </div>
+        <div class="widget-body">
+            <table class="simple-table">
+                <thead>
+                    <tr><th>파트너명</th><th>관리 매장</th><th style="text-align: right;">총 실적</th></tr>
+                </thead>
+                <tbody>
+                    {% for staff in staff_performance | default([]) %}
+                    <tr>
+                        <td>{{ staff.username }}</td>
+                        <td>{{ staff.store_count | default(0) }}</td>
+                        <td style="text-align: right; color: var(--primary);">{{ "{:,.0f}".format(staff.revenue | default(0)) }}원</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3" style="text-align: center; padding: 50px 0; color: #475569;">데이터 없음</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 3. 최근 주문 트렌드 (하단 전체 너비 사용) -->
+    <div class="widget-card" style="grid-column: 1 / -1;">
+        <div class="widget-header">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <h3 class="widget-title">통합 주문 트렌드 (최근 7일)</h3>
+                <span style="background:var(--danger); color:white; padding:3px 10px; border-radius:50px; font-size:0.7rem; font-weight:900;">LIVE</span>
+            </div>
+            <i data-lucide="trending-up" style="color:var(--primary)"></i>
+        </div>
+        <div class="trend-container">
+            {% set trend_data = [40, 65, 35, 95, 80, 55, 90] %}
+            {% for i in range(7) %}
+            <div class="trend-column">
+                <div class="bar" style="height: {{ trend_data[i] }}%;"></div>
+                <span class="day-label">D-{{ 6-i }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    lucide.createIcons();
+    // 스마트 대시보드 로드 애니메이션 (진행률 표시줄)
+    window.addEventListener('DOMContentLoaded', () => {
+        const bars = document.querySelectorAll('.progress-bar');
+        bars.forEach(bar => {
+            const finalWidth = bar.style.width;
+            bar.style.width = '0%';
+            setTimeout(() => { bar.style.width = finalWidth; }, 300);
+        });
+    });
+</script>
+{% endblock %}

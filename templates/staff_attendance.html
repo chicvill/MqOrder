@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>{{ store.name }} - 직원 출퇴근 체크</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --attend-bg: #0f0f0f;
+            --attend-card: rgba(255, 255, 255, 0.03);
+            --btn-in: #2ecc71;
+            --btn-out: #e74c3c;
+            --royal-gold: #D4AF37;
+        }
+        
+        body { 
+            background: var(--attend-bg); 
+            color: #fff; 
+            display: flex; 
+            flex-direction: column; 
+            min-height: 100vh; 
+            padding: 0;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        .attendance-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            padding-top: 40px;
+            max-width: 500px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .header-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .store-name {
+            color: var(--royal-gold);
+            font-size: 1.5rem;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            margin-bottom: 5px;
+        }
+
+        .user-welcome {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .user-welcome strong {
+            color: #fff;
+        }
+
+        /* 급여 보드 - 상단 배치 */
+        .wage-board {
+            background: var(--attend-card);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.05);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .wage-label {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .wage-value {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: var(--royal-gold);
+        }
+
+        /* 메인 콘텐츠 영역 - 중앙 배치 */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 10px 24px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 1rem;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .status-working { background: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid #2ecc71; }
+        .status-home { background: rgba(255,255,255,0.05); color: #888; border: 1px solid #333; }
+
+        /* 시간 표시 박스 - 요청 사항 핵심 */
+        .time-box {
+            background: rgba(255,255,255,0.02);
+            border: 2px solid var(--royal-gold);
+            border-radius: 16px;
+            padding: 25px 20px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.15);
+        }
+
+        .time-text {
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: #fff;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -1px;
+        }
+
+        .date-text {
+            font-size: 1rem;
+            color: var(--royal-gold);
+            margin-top: 10px;
+            font-weight: 600;
+        }
+
+        /* 액션 버튼 영역 - 하단 배치 (한 손 조작 최적화) */
+        .action-container {
+            margin-top: auto;
+            padding-bottom: 40px;
+            width: 100%;
+        }
+
+        .big-button {
+            width: 100%;
+            padding: 22px;
+            border-radius: 20px;
+            font-size: 1.4rem;
+            font-weight: 900;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+
+        .btn-checkin { 
+            background: linear-gradient(135deg, #2ecc71, #27ae60); 
+            color: #fff; 
+            box-shadow: 0 8px 20px rgba(46, 204, 113, 0.4); 
+        }
+
+        .btn-checkout { 
+            background: linear-gradient(135deg, #e74c3c, #c0392b); 
+            color: #fff; 
+            box-shadow: 0 8px 20px rgba(231, 76, 60, 0.4); 
+        }
+
+        .big-button:active { transform: scale(0.96); opacity: 0.9; }
+
+        .pending-msg {
+            background: rgba(255, 165, 0, 0.1);
+            border: 1px dashed orange;
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            color: orange;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .working-timer {
+            margin-top: 20px;
+            font-weight: 700;
+            color: #f1c40f;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .spin { animation: spin 2s linear infinite; }
+    </style>
+</head>
+<body>
+    <div class="attendance-wrapper">
+        <div class="header-section">
+            <h1 class="store-name">{{ store.name }}</h1>
+            <p class="user-welcome"><strong>{{ session['username'] }}</strong></p>
+        </div>
+
+        <div class="wage-board">
+            <span class="wage-label">정산 예정</span>
+            <span id="monthly-wage" class="wage-value">0원</span>
+        </div>
+
+        <div class="main-content">
+            <div id="status-tag" class="status-badge status-home">접속 중</div>
+            
+            <div class="time-box">
+                <div class="time-text" id="clock">2026/04/07 13:30</div>
+            </div>
+
+            <div id="active-timer" class="working-timer" style="display:none;">
+                <i data-lucide="clock" size="18"></i>
+                근무: <span id="minutes-count">0</span>분
+            </div>
+        </div>
+
+        <div class="action-container">
+            <div id="pending-msg" class="pending-msg" style="display:none;">
+                <i data-lucide="loader-2" class="spin" size="18" style="vertical-align: middle;"></i> 
+                승인 대기 중
+            </div>
+
+            <div id="action-area">
+                <button id="btn-in" class="big-button btn-checkin" onclick="checkIn()">
+                    <i data-lucide="power"></i> 출근
+                </button>
+                <button id="btn-out" class="big-button btn-checkout" onclick="checkOut()" style="display:none;">
+                    <i data-lucide="log-out"></i> 퇴근
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+        let checkInTime = null;
+        const slug = "{{ store.id }}";
+        const currentUserId = Number('{{ session.get("user_id", 0) }}');
+
+        // Socket IO 연결 및 방 입장
+        socket.on('connect', () => { 
+            socket.emit('join', { store_id: slug }); 
+        });
+
+        // 실시간 승인 알림 수신
+        socket.on('attendance_approved', (data) => {
+            if (data.user_id === currentUserId || data.bulk) {
+                loadStatus();
+                if (window.confirm('승인 완료!')) {
+                    location.reload();
+                }
+            }
+        });
+
+        function updateClock() {
+            const now = new Date();
+            
+            // YYYY/MM/DD HH:mm 포맷팅
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            const h = String(now.getHours()).padStart(2, '0');
+            const min = String(now.getMinutes()).padStart(2, '0');
+            
+            document.getElementById('clock').innerText = `${y}/${m}/${d} ${h}:${min}`;
+            
+            if (checkInTime) {
+                const diff = Math.floor((new Date() - checkInTime) / 60000);
+                document.getElementById('minutes-count').innerText = Math.max(0, diff);
+            }
+        }
+        setInterval(updateClock, 1000);
+
+        async function loadStatus() {
+            try {
+                const res = await fetch(`/api/${slug}/attendance/staff-status`);
+                const data = await res.json();
+                
+                document.getElementById('monthly-wage').innerText = (data.current_wage || 0).toLocaleString() + '원';
+                const tag = document.getElementById('status-tag');
+                const btnIn = document.getElementById('btn-in');
+                const btnOut = document.getElementById('btn-out');
+                const pendingMsg = document.getElementById('pending-msg');
+                const activeTimer = document.getElementById('active-timer');
+
+                if (data.status === 'working') {
+                    checkInTime = new Date(data.check_in_at);
+                    tag.innerText = '업무 중'; tag.className = 'status-badge status-working';
+                    btnIn.style.display = 'none';
+                    btnOut.style.display = 'flex';
+                    pendingMsg.style.display = 'none';
+                    activeTimer.style.display = 'flex';
+                    document.getElementById('action-area').style.display = 'block';
+                } else if (data.status.startsWith('pending')) {
+                    // 이제 대기 상태는 기본적으로 발생하지 않아야 함 (자동 승인되므로)
+                    // 하지만 예외 케이스를 위해 유지
+                    tag.innerText = '승인 대기'; tag.className = 'status-badge status-home';
+                    btnIn.style.display = 'none';
+                    btnOut.style.display = 'none';
+                    pendingMsg.style.display = 'block';
+                    activeTimer.style.display = 'none';
+                } else {
+                    checkInTime = null;
+                    tag.innerText = '업무 전/후'; tag.className = 'status-badge status-home';
+                    btnIn.style.display = 'flex';
+                    btnOut.style.display = 'none';
+                    pendingMsg.style.display = 'none';
+                    activeTimer.style.display = 'none';
+                    document.getElementById('action-area').style.display = 'block';
+                }
+            } catch (e) { 
+                console.error('Status Load Error:', e); 
+            }
+        }
+
+        async function checkIn() {
+            try {
+                const res = await fetch(`/api/${slug}/attendance/check-in`, { method: 'POST' });
+                const result = await res.json();
+                if (result.status === 'success') {
+                    alert(result.message || '출근 처리되었습니다.');
+                    location.reload();
+                } else {
+                    alert('출근 불가\n' + result.message);
+                }
+            } catch(e) { alert('통신 오류'); }
+        }
+
+        async function checkOut() {
+            try {
+                const res = await fetch(`/api/${slug}/attendance/check-out`, { method: 'POST' });
+                const result = await res.json();
+                if (result.status === 'success') {
+                    alert(result.message || '퇴근 처리되었습니다.');
+                    location.reload();
+                } else {
+                    alert('퇴근 불가\n' + result.message);
+                }
+            } catch(e) { alert('통신 오류'); }
+        }
+
+        lucide.createIcons();
+        loadStatus(); 
+        updateClock();
+    </script>
+
+</body>
+</html>
+

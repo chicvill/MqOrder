@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>매장 커스터마이징 마법사 | MQnet Setup</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root { --primary: {{ store.theme_color or '#3b82f6' }}; --accent: #10b981; --bg: #0f172a; --card: #1e293b; --border: #334155; --text: #f8fafc; }
+        body { background: var(--bg); color: var(--text); font-family: 'Pretendard', sans-serif; padding: 2rem; }
+        .setup-container { max-width: 900px; margin: 0 auto; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 2rem; margin-bottom: 2rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: #94a3b8; font-weight: 700; }
+        input, select { 
+            width: 100%; background: #0f172a; border: 1px solid var(--border); border-radius: 12px; 
+            padding: 12px; color: white; font-size: 1rem; box-sizing: border-box;
+        }
+        .color-picker { width: 100%; height: 50px; cursor: pointer; border-radius: 10px; border: none; }
+        .btn-save { 
+            background: var(--primary); color: white; border: none; padding: 1.5rem; 
+            border-radius: 20px; font-weight: 950; font-size: 1.2rem; cursor: pointer; width: 100%;
+            transition: 0.2s; box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+        .step-badge { 
+            background: var(--primary); color: white; padding: 4px 12px; border-radius: 20px; 
+            font-size: 0.8rem; font-weight: 900; margin-bottom: 10px; display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-container">
+        <div style="margin-bottom:3rem; text-align:center;">
+            <h1><i data-lucide="sparkles" style="color:var(--primary);"></i> 매장 상세 최적화 세팅</h1>
+            <p style="color:#94a3b8;">영업 담당자와 점주님이 협의하여 최적의 인터페이스를 구축합니다.</p>
+        </div>
+
+        <form action="/admin/stores/setup/{{ store.id }}" method="POST">
+            <!-- 1. UI 디자인 테마 -->
+            <div class="card">
+                <span class="step-badge">STEP 2-1. 디자인 테마</span>
+                <h3>주문창 브랜드 컬러 및 연락처</h3>
+                <div class="grid">
+                    <div class="form-group">
+                        <label>주문판 포인트 컬러 (Brand Color)</label>
+                        <input type="color" name="theme_color" value="{{ store.theme_color or '#3b82f6' }}" class="color-picker">
+                    </div>
+                    <div class="form-group">
+                        <label>고객 노출용 대표 번호 (배달/예약)</label>
+                        <input type="text" name="contact_phone" value="{{ store.contact_phone or '' }}" placeholder="010-0000-0000">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. 포인트 및 웨이팅 설정 -->
+            <div class="card">
+                <span class="step-badge">STEP 2-2. 정책 및 편의 기능</span>
+                <h3>포인트 적립 및 웨이팅 규정</h3>
+                <div class="grid">
+                    <div class="form-group">
+                        <label>결제 금액 대비 포인트 적립률 (%)</label>
+                        <input type="number" step="0.1" name="point_ratio" value="{{ store.point_ratio or 0.0 }}" placeholder="예: 3.5">
+                    </div>
+                    <div class="form-group">
+                        <label>웨이팅 알림톡 발송 번호</label>
+                        <input type="text" name="waiting_sms_no" value="{{ store.waiting_sms_no or '' }}" placeholder="010-0000-0000">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. 메뉴 구성 (비주얼 메뉴 빌더 재사용) -->
+            <div class="card">
+                <span class="step-badge">STEP 2-3. 핵심 메뉴 구성</span>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3>기본 메뉴 및 카테고리 구성</h3>
+                    <button type="button" onclick="location.href='/admin/stores/{{ store.id }}/config'" class="btn" style="background:#334155; padding:8px 15px; border-radius:10px; color:#fff; font-size:0.85rem;">비주얼 빌더 열기 <i data-lucide="external-link" size="14"></i></button>
+                </div>
+                <p style="font-size:0.85rem; color:#64748b; margin-top:0;">* 메뉴 구성은 가입 승인 후 상시 수정 가능합니다. 초기에는 주요 품목만 등록해 주세요.</p>
+                <div id="categorySummary" style="background:#0f172a; padding:1.5rem; border-radius:15px; min-height:80px;">
+                    {# 현재 등록된 메뉴가 있다면 요약 표시 #}
+                    {% if store.menu_data %}
+                        {% for cat, items in store.menu_data.items() %}
+                            <div style="margin-bottom:10px;">
+                                <strong style="color:var(--primary);">{{ cat }}</strong>: {{ items|length }}개 품목 등록됨
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div style="color:#475569; text-align:center;">등록된 메뉴 정보가 없습니다.</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <button type="submit" class="btn-save">모든 세팅 완료 및 운영 승인 요청</button>
+        </form>
+    </div>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

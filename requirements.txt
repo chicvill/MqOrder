@@ -1,0 +1,15 @@
+flask
+flask-socketio
+flask-sqlalchemy
+flask-apscheduler
+openai
+requests
+python-dotenv
+httpx
+qrcode
+pillow
+pycryptodome
+cryptography
+eventlet
+gunicorn
+pg8000
