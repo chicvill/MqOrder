@@ -181,6 +181,15 @@
                         <div class="form-group"><label>대표자 성함</label><input type="text" name="ceo_name" value="{{ store.ceo_name or '' }}"></div>
                         <div class="form-group" style="grid-column: span 2;"><label>관리 이메일</label><input type="email" name="business_email" value="{{ store.business_email or '' }}" placeholder="receipt@company.com"></div>
                         
+                        <div class="form-group" style="grid-column: span 2; display: flex; align-items: center; gap: 15px; background: rgba(59, 130, 246, 0.05); padding: 15px; border-radius: 16px; border: 1px solid rgba(59, 130, 246, 0.2);">
+                            <i data-lucide="shield-off" style="color: var(--primary);"></i>
+                            <div style="flex:1;">
+                                <label style="margin:0; color:white;">자동 로그아웃 방지</label>
+                                <p style="font-size:0.75rem; color:#64748b; margin:0;">보안상 위험하지만 장시간 로그인을 유지해야 하는 장비(식당 카운터/주방)에서 사용하세요.</p>
+                            </div>
+                            <input type="checkbox" name="disable_auto_logout" {% if store.disable_auto_logout %}checked{% endif %} style="width:20px; height:20px;">
+                        </div>
+
                         {% if session['role'] == 'admin' %}
                         <div class="form-group" style="grid-column: span 2; display: flex; align-items: center; gap: 15px; background: rgba(59, 130, 246, 0.05); padding: 15px; border-radius: 16px; border: 1px solid rgba(59, 130, 246, 0.2);">
                             <i data-lucide="eye" style="color: var(--primary);"></i>

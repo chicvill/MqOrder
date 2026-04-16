@@ -11,7 +11,7 @@ load_dotenv()
 
 # ── Cloudflare 설정 ──
 TUNNEL_ID  = "f950e561-4120-4b38-8754-dd8ae61b1cd3"
-HOSTNAME   = "ai.chicvill.store"
+HOSTNAME   = "mq.chicvill.store"
 SERVICE    = "http://127.0.0.1:10000"
 
 # dash.cloudflare.com URL에서 확인

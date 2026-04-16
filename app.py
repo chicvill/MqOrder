@@ -308,40 +308,8 @@ def help_page():
     return render_template('help.html')
 
 
-# ─── 토스 결제 성공 리다이렉트 처리 ───
-@app.route('/billing/success')
-def billing_success():
-    order_id = request.args.get('orderId', '')
-    payment_key = request.args.get('paymentKey', '')
-    amount = int(request.args.get('amount', 50000))
-
-    user_id = session.get('user_id')
-    if not user_id:
-        return redirect('/login')
-
-    user = db.session.get(User, user_id)
-    store = db.session.get(Store, user.store_id) if user and user.store_id else None
-    if not store:
-        flash('매장 정보를 찾을 수 없습니다.', 'error')
-        return redirect('/billing')
-
-    now = datetime.utcnow()
-    base = store.expires_at if (store.expires_at and store.expires_at > now) else now
-    new_expires = base + timedelta(days=30)
-
-    store.expires_at = new_expires
-    store.payment_status = 'paid'
-    store.status = 'active'
-
-    db.session.add(Subscription(
-        store_id=store.id, plan='standard', amount=amount,
-        method='card', status='active',
-        period_start=base, period_end=new_expires, paid_at=now
-    ))
-    db.session.commit()
-
-    flash(f'✅ 결제 완료! {new_expires.strftime("%Y년 %m월 %d일")}까지 이용 가능합니다.', 'success')
-    return redirect('/billing')
+    # [알림] 실제 결제 승인 로직은 routes/billing.py 의 toss_success_page 에서 통합 관리합니다.
+    return redirect(url_for('billing.toss_success_page', **request.args))
 
 # --- 계좌이체 안내 페이지 ---
 @app.route('/<store_id>/payment_info')
@@ -464,18 +432,7 @@ def ping():
         'timestamp': datetime.utcnow().isoformat()
     }), 200 if db_status == "ok" else 500
 
-# [안정성 보강] 로컬 환경에서 충돌 가능성이 있는 백그라운드 작업 일시 비활성화
-# if not scheduler.get_job('weekly_backup_job'):
-#     models_to_backup = [
-#         ('운영자 및 유저', User), ('가맹점 정보', Store), ('주문 내역', Order),
-#         ('포인트 트랜잭션', PointTransaction), ('고객 명단', Customer)
-#     ]
-#     scheduler.add_job(id='weekly_backup_job', func=send_daily_backup, args=(app, db, models_to_backup), trigger='cron', day_of_week='mon', hour=0, minute=0)
-
-# if not scheduler.get_job('keep_alive_job'):
-#     scheduler.add_job(id='keep_alive_job', func=keep_alive_ping, trigger='interval', minutes=10)
-
-# scheduler.start()
+# [안정성 보강] 스케줄러 작업 설정은 메인 블록 내부에서 수행합니다.
 
 # [최종] 라우트 추가 - 구글 플레이 필수 문서
 @app.route('/privacy')
@@ -537,17 +494,53 @@ if __name__ == '__main__':
             # [컬럼 보정] 직접 엔진 연결을 사용하여 DDL(ALTER) 실행 (더 확실한 방식)
             try:
                 with db.engine.connect() as conn:
+                    # Orders 테이블 보정
                     conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20)"))
                     conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS order_no VARCHAR(10)"))
                     conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS depositor_name VARCHAR(100)"))
                     conn.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_prepaid BOOLEAN DEFAULT FALSE"))
+                    
+                    # Users 테이블 보정 (급여/계좌 정보)
+                    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_name VARCHAR(50)"))
+                    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS account_no VARCHAR(50)"))
+                    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS hourly_rate INTEGER DEFAULT 10000"))
+                    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS position VARCHAR(50)"))
+                    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS work_schedule JSON"))
+                    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS contract_start DATE"))
+                    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS contract_end DATE"))
+
+                    # Stores 테이블 보정 (SaaS/보안 설정)
+                    conn.execute(text("ALTER TABLE stores ADD COLUMN IF NOT EXISTS disable_auto_logout BOOLEAN DEFAULT FALSE"))
+                    conn.execute(text("ALTER TABLE stores ADD COLUMN IF NOT EXISTS billing_key VARCHAR(100)"))
+                    
                     conn.commit()
-                print("🛠️ [DB 보정] orders 테이블 컬럼이 성공적으로 최신화되었습니다.")
+                print("🛠️ [DB 보정] 모든 테이블 컬럼이 성공적으로 최신화되었습니다.")
             except Exception as e:
                 print(f"⚠️ [DB 보정 안내] 이미 컬럼이 존재하거나 권한 이슈로 스킵됨: {e}")
 
             print("👤 [계정/설정] 초기 데이터 준비 완료")
             print("✅ [DB 준비 완료]")
+
+            # [스케줄러] 백그라운드 작업 시작
+            try:
+                if not scheduler.running:
+                    # 백업 작업 등록 (매주 월요일 0시)
+                    from MQutils.backup import send_daily_backup
+                    models_to_backup = [('운영자 및 유저', User), ('가맹점 정보', Store), ('주문 내역', Order)]
+                    scheduler.add_job(id='weekly_backup_job', func=send_daily_backup, args=(app, db, models_to_backup), trigger='cron', day_of_week='mon', hour=0, minute=0)
+                    
+                    # 접속 상태 유지 핑 (10분 주기)
+                    scheduler.add_job(id='keep_alive_job', func=keep_alive_ping, trigger='interval', minutes=10)
+                    
+                    # [SaaS] 정기 결제 자동 수금 (새벽 2시)
+                    from routes.billing import auto_collect_subscriptions
+                    scheduler.add_job(id='auto_billing_job', func=auto_collect_subscriptions, args=(app,), trigger='cron', hour=2, minute=0)
+                    
+                    scheduler.start()
+                    print("⏰ [스케줄러] 정기 백업 및 자동 결제 엔진 활성화")
+            except Exception as se:
+                print(f"⚠️ [스케줄러 경고] 이미 실행 중이거나 초기화 실패: {se}")
+
         except Exception as e:
             print(f"⚠️ [DB 경고] {e}")
 

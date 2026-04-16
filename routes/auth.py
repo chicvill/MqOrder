@@ -26,10 +26,18 @@ def init_auth_routes(app):
                         flash('아직 관리자의 승인이 대기 중입니다.', 'error')
                         return redirect(url_for('login'))
                     remember_me = request.form.get('remember_me') == 'yes'
+                    
+                    # [신규] 매장 설정에서 자동 로그아웃 방지가 켜져 있으면 강제로 permanent 설정
+                    if user.store_id:
+                        store_cfg = db.session.get(Store, user.store_id)
+                        if store_cfg and store_cfg.disable_auto_logout:
+                            remember_me = True
+                            print(f"🔒 [보안] {user.store_id} 매장의 자동 로그아웃 방지 설정이 감지되었습니다.")
+
                     session.permanent = remember_me
                     if remember_me:
-                        # 30일간 로그인 유지
-                        app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
+                        # 30일간 로그인 유지 (SaaS 정책에 따라 기간 조정 가능)
+                        app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=365) # 1년으로 대폭 상향
                     else:
                         # 기본 브라우저 종료 시 종료 또는 짧은 기간
                         app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)

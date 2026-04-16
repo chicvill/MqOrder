@@ -208,12 +208,17 @@
         </div>
 
         <!-- ── 결제 버튼 ── -->
-        <button id="payBtn" class="btn btn-primary" onclick="startPayment()">
-            <i class="fa-solid fa-credit-card"></i>
-            {% if is_expired %}지금 결제하고 서비스 복원하기
-            {% elif is_trial %}체험 종료 전 구독 시작하기
-            {% else %}다음 달 갱신하기{% endif %}
-        </button>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <button id="payBtn" class="btn btn-primary" onclick="startPayment()">
+                <i class="fa-solid fa-credit-card"></i>
+                {% if is_expired %}1회 결제 (30일)
+                {% else %}이번 달만 결제{% endif %}
+            </button>
+            <button id="billingBtn" class="btn btn-secondary" onclick="startBillingAuth()" style="border:1px solid var(--accent); color:var(--accent);">
+                <i class="fa-solid fa-rotate"></i>
+                자동 정기 결제 등록
+            </button>
+        </div>
 
         <p style="text-align:center; font-size:0.78rem; color:var(--text-muted); margin-top:0.8rem;">
             <i class="fa-solid fa-lock" style="margin-right:4px;"></i>토스 페이먼츠 보안 결제 · 언제든지 해지 가능
@@ -295,6 +300,22 @@ async function startPayment() {
         btn.innerHTML = '<i class="fa-solid fa-credit-card"></i> 다시 시도하기';
         if (err.code !== 'USER_CANCEL') {
             alert('결제 중 오류가 발생했습니다: ' + err.message);
+        }
+    }
+}
+
+// ── 정기 결제 빌링키 발급 ──
+async function startBillingAuth() {
+    const tossPayments = TossPayments(TOSS_CLIENT_KEY);
+    try {
+        await tossPayments.requestBillingAuth('카드', {
+            customerKey: 'cust_' + STORE_ID,
+            successUrl: `${window.location.origin}/billing/auth-success`,
+            failUrl: `${window.location.origin}/billing?error=billing_auth_failed`,
+        });
+    } catch (err) {
+        if (err.code !== 'USER_CANCEL') {
+            alert('빌링키 발급 중 오류가 발생했습니다: ' + err.message);
         }
     }
 }

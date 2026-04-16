@@ -90,6 +90,9 @@ class Store(db.Model):
     # [설정] 자동 로그아웃 방지 여부
     disable_auto_logout = db.Column(db.Boolean, default=False)
 
+    # [SaaS] 정기 결제용 빌링키
+    billing_key = db.Column(db.String(100), nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     users = db.relationship('User', backref='store_ptr', lazy=True, foreign_keys=[User.store_id])

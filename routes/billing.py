@@ -5,7 +5,7 @@ from flask import Blueprint, render_template, request, session, redirect, url_fo
 from datetime import datetime, timedelta
 from functools import wraps
 from models import db, User, Store, Subscription, TaxInvoice
-import os
+import os, base64, requests, time
 from MQutils.messenger import SolapiMessenger
 
 billing_bp = Blueprint('billing', __name__)
@@ -137,6 +137,193 @@ def toss_payment_success():
         'new_expires': new_expires.isoformat() + 'Z',
         'message': f'구독이 {new_expires.strftime("%Y년 %m월 %d일")}까지 연장되었습니다.'
     })
+
+# ─── 토스 페이먼츠 결제 성공 (GET) ───
+@billing_bp.route('/billing/success')
+@login_required
+def toss_success_page():
+    """결제 성공 후 리다이렉트되어 들어오는 페이지. Toss API로 최종 승인 처리."""
+    payment_key = request.args.get('paymentKey')
+    order_id = request.args.get('orderId')
+    amount = request.args.get('amount')
+
+    if not all([payment_key, order_id, amount]):
+        flash("결제 정보가 누락되었습니다.", "error")
+        return redirect(url_for('billing.billing_home'))
+
+    # [핵심] 토스 결제 승인 API 호출 (Secret Key 인증 필요)
+    secret_key = os.getenv('TOSS_SECRET_KEY', 'test_sk_placeholder')
+    # SecretKey: 뒤에 :을 붙이고 base64 인코딩
+    auth_str = base64.b64encode(f"{secret_key}:".encode('utf-8')).decode('utf-8')
+    
+    headers = {
+        'Authorization': f'Basic {auth_str}',
+        'Content-Type': 'application/json'
+    }
+    
+    payload = {
+        'paymentKey': payment_key,
+        'orderId': order_id,
+        'amount': amount
+    }
+
+    try:
+        resp = requests.post('https://api.tosspayments.com/v1/payments/confirm', json=payload, headers=headers)
+        res_data = resp.json()
+
+        if resp.status_code == 200:
+            # 승인 성공: DB 업데이트 (기존 로직 활용 또는 통합)
+            update_subscription_success(order_id, amount)
+            flash("구독 결제가 성공적으로 완료되었습니다!", "success")
+        else:
+            # 승인 실패
+            error_msg = res_data.get('message', '결제 승인 중 오류가 발생했습니다.')
+            flash(f"결제 실패: {error_msg}", "error")
+            
+    except Exception as e:
+        print(f"❌ [Toss Confirm Error] {e}")
+        flash("결제 연동 중 서버 오류가 발생했습니다.", "error")
+
+    return redirect(url_for('billing.billing_home'))
+
+def update_subscription_success(order_id, amount):
+    """결제 완료 후 DB 상태를 업데이트하는 내부 함수"""
+    user_id = session.get('user_id')
+    user = db.session.get(User, user_id)
+    if not user or not user.store_id: return False
+
+    store = db.session.get(Store, user.store_id)
+    if not store: return False
+
+    now = datetime.utcnow()
+    base = store.expires_at if (store.expires_at and store.expires_at > now) else now
+    new_expires = base + timedelta(days=30)
+
+    store.expires_at = new_expires
+    store.payment_status = 'paid'
+    store.status = 'active'
+
+    sub = Subscription(
+        store_id=store.id,
+        plan='standard',
+        amount=int(amount),
+        method='card',
+        status='active',
+        period_start=base,
+        period_end=new_expires,
+        paid_at=now
+    )
+    db.session.add(sub)
+    db.session.commit()
+    
+    # [알림톡/이메일 발송]
+    if store.business_email:
+        try:
+            messenger = SolapiMessenger()
+            subject = f"[{store.name}] MQnet 구독 결제 완료 안내"
+            body = f"안녕하세요. {store.name}의 {amount}원 결제가 {new_expires.strftime('%Y-%m-%d')}까지 연장되었습니다."
+            messenger.send_email(store.business_email, subject, body)
+        except: pass
+    
+    return True
+
+# ─── 정기 결제 빌링키 발급 성공 ───
+@billing_bp.route('/billing/auth-success')
+@login_required
+def toss_billing_auth_success():
+    """정기 결제 수단 등록 성공 시 호출되는 콜백"""
+    auth_key = request.args.get('authKey')
+    customer_key = request.args.get('customerKey')
+
+    # 1. 빌링키 발급 요청
+    secret_key = os.getenv('TOSS_SECRET_KEY', 'test_sk_placeholder')
+    auth_str = base64.b64encode(f"{secret_key}:".encode('utf-8')).decode('utf-8')
+    headers = {'Authorization': f'Basic {auth_str}', 'Content-Type': 'application/json'}
+    
+    payload = {'authKey': auth_key, 'customerKey': customer_key}
+    
+    try:
+        resp = requests.post('https://api.tosspayments.com/v1/billing/authorizations/issue', json=payload, headers=headers)
+        res_data = resp.json()
+        
+        if resp.status_code == 200:
+            billing_key = res_data.get('billingKey')
+            # 2. Store에 빌링키 저장
+            user = db.session.get(User, session['user_id'])
+            store = db.session.get(Store, user.store_id)
+            store.billing_key = billing_key
+            db.session.commit()
+            flash("정기 결제 수단이 안전하게 등록되었습니다.", "success")
+        else:
+            flash(f"등록 실패: {res_data.get('message')}", "error")
+    except:
+        flash("서버 통신 중 오류가 발생했습니다.", "error")
+
+    return redirect(url_for('billing.billing_home'))
+
+# ─── [스케줄러 작업] 자동 결제 실행 ───
+def auto_collect_subscriptions(app):
+    """
+    매일 새벽 정기 결제 대상 매장을 찾아 자동 결제 요청을 보냅니다.
+    """
+    with app.app_context():
+        now = datetime.utcnow()
+        # 내일 만료되는 매장 중 빌링키가 있는 매장 조회
+        target_limit = now + timedelta(days=1)
+        stores = Store.query.filter(
+            Store.billing_key.isnot(None), 
+            Store.expires_at <= target_limit,
+            Store.status == 'active'
+        ).all()
+
+        print(f"🕒 [Auto-Billing] {len(stores)}개 매장 정기 결제 검토 중...")
+        
+        secret_key = os.getenv('TOSS_SECRET_KEY', 'test_sk_placeholder')
+        auth_str = base64.b64encode(f"{secret_key}:".encode('utf-8')).decode('utf-8')
+        headers = {'Authorization': f'Basic {auth_str}', 'Content-Type': 'application/json'}
+
+        for s in stores:
+            try:
+                # 결제 요청
+                payload = {
+                    'amount': s.monthly_fee or 50000,
+                    'orderId': f"auto_{s.id}_{int(time.time())}",
+                    'orderName': f"MQnet 정기 구독 — {s.name}",
+                    'customerKey': f"cust_{s.id}"
+                }
+                resp = requests.post(f'https://api.tosspayments.com/v1/billing/{s.billing_key}', json=payload, headers=headers)
+                
+                if resp.status_code == 200:
+                    # 결제 성공 시 만기 연장
+                    base = s.expires_at if s.expires_at > now else now
+                    new_expires = base + timedelta(days=30)
+                    s.expires_at = new_expires
+                    
+                    db.session.add(Subscription(
+                        store_id=s.id, plan='standard', amount=payload['amount'],
+                        method='auto_card', status='active',
+                        period_start=base, period_end=new_expires, paid_at=now
+                    ))
+                    print(f"✅ [Auto-Billing Success] {s.name} 결제 완료")
+                else:
+                    # 결제 실패 시 관리자 알림 (checklist 반영)
+                    print(f"❌ [Auto-Billing Fail] {s.name}: {resp.json().get('message')}")
+                    # 여기서 관리자에게 알림톡/메일을 보내는 로직을 추가할 수 있습니다.
+                    
+            except Exception as e:
+                print(f"⚠️ [Auto-Billing Error] {s.name}: {e}")
+        
+        db.session.commit()
+
+
+@billing_bp.route('/api/billing/toss-fail', methods=['POST', 'GET'])
+def toss_payment_fail():
+    """결제 실패 시 처리"""
+    code = request.args.get('code')
+    message = request.args.get('message')
+    print(f"❌ [결제실패] {code}: {message}")
+    flash(f"결제에 실패했습니다: {message}", "error")
+    return redirect(url_for('billing.billing_home'))
 
 # ─── 수동 무료 연장 (관리자 전용) ───
 @billing_bp.route('/api/billing/extend/<store_id>', methods=['POST'])
