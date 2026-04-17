@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>근로계약서 - {{ store.name }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #1e40af;
+            --accent: #3b82f6;
+            --danger: #dc2626;
+            --bg: #f8f9fa;
+            --text: #1a1a2e;
+        }
+        * { box-sizing: border-box; margin:0; padding:0; }
+        body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); }
+
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; }
+            .contract-wrap { max-width:100%; box-shadow:none; border:none; }
+        }
+
+        /* ─── 공통 레이아웃 ─── */
+        .contract-wrap {
+            max-width: 800px;
+            margin: 30px auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .contract-header {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            text-align: center;
+            padding: 35px 30px 25px;
+        }
+        .contract-header h1 { font-size: 1.8rem; font-weight: 900; letter-spacing: -0.5px; margin-bottom: 6px; }
+        .contract-header p  { font-size: 0.9rem; opacity: 0.8; }
+
+        .contract-body { padding: 35px 40px; }
+
+        /* ─── 섹션 ─── */
+        .section { margin-bottom: 30px; }
+        .section-title {
+            font-size: 1rem; font-weight: 900;
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 8px; margin-bottom: 16px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .info-row {
+            display: flex; flex-direction: column; gap: 4px;
+        }
+        .info-row label { font-size: 0.73rem; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .info-row .val { font-size: 0.92rem; font-weight: 700; border-bottom: 1px solid #e5e7eb; padding: 4px 0; min-height: 28px; }
+
+        /* ─── 조항 ─── */
+        .clause-list { list-style: none; counter-reset: clause; }
+        .clause-list li {
+            counter-increment: clause;
+            padding: 10px 0 10px 36px;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 0.88rem;
+            line-height: 1.7;
+            position: relative;
+            color: #374151;
+        }
+        .clause-list li::before {
+            content: "제 " counter(clause) "조";
+            position: absolute; left: 0;
+            font-size: 0.72rem; font-weight: 900;
+            color: var(--primary);
+            white-space: nowrap;
+        }
+
+        /* ─── 서명 영역 ─── */
+        .sign-section {
+            margin-top: 30px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        .sign-box {
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .sign-box .sign-label { font-size: 0.8rem; font-weight: 900; color: #6b7280; margin-bottom: 10px; }
+        .sign-box .sign-name  { font-size: 1.1rem; font-weight: 800; margin-bottom: 15px; }
+
+        canvas.sig-canvas {
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            cursor: crosshair;
+            touch-action: none;
+            width: 100%;
+            height: 100px;
+            background: #fafafa;
+        }
+        .sig-canvas.signed { border-color: var(--accent); background: white; }
+
+        .sign-btns { display: flex; gap: 8px; margin-top: 8px; justify-content: center; }
+        .btn-clear {
+            font-size: 0.75rem; background: #f3f4f6;
+            border: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-weight: 700;
+        }
+
+        /* ─── 버튼 ─── */
+        .action-bar {
+            padding: 20px 40px;
+            background: #f9fafb;
+            border-top: 1px solid #e5e7eb;
+            display: flex; gap: 12px; justify-content: flex-end;
+        }
+        .btn {
+            padding: 11px 26px; border-radius: 8px; font-weight: 700;
+            font-size: 0.9rem; cursor: pointer; border: none; transition: 0.2s;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #1e3a8a; }
+        .btn-success { background: #16a34a; color: white; }
+        .btn-success:hover { background: #15803d; }
+        .btn-outline { background: white; border: 2px solid #e5e7eb; color: #374151; }
+        .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+
+        .alert-box {
+            background: #fef3c7; border: 1px solid #fde68a;
+            border-radius: 8px; padding: 12px 16px;
+            font-size: 0.82rem; color: #92400e;
+            margin-bottom: 20px;
+            display: flex; align-items: flex-start; gap: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="contract-wrap">
+    <div class="contract-header">
+        <h1>📋 근로계약서</h1>
+        <p>{{ store.name }} · {{ now_date }}</p>
+    </div>
+
+    <div class="contract-body">
+
+        <div class="alert-box no-print">
+            ⚠️ 이 계약서는 법적 효력을 갖습니다. 내용을 충분히 확인한 후 서명하세요. 서명 후 PDF로 저장하거나 인쇄하여 보관하세요.
+        </div>
+
+        <!-- 당사자 정보 -->
+        <div class="section">
+            <div class="section-title">👥 계약 당사자</div>
+            <div class="info-grid">
+                <div class="info-row"><label>사용자 (매장명)</label><div class="val">{{ store.name }}</div></div>
+                <div class="info-row"><label>대표자</label><div class="val">{{ store.ceo_name or '-' }}</div></div>
+                <div class="info-row"><label>사업자번호</label><div class="val">{{ store.business_no or '-' }}</div></div>
+                <div class="info-row"><label>소재지</label><div class="val">{{ store.address or '-' }}</div></div>
+                <div class="info-row"><label>근로자 성명</label><div class="val">{{ worker.full_name or worker.username }}</div></div>
+                <div class="info-row"><label>근로자 연락처</label><div class="val">{{ worker.phone or '-' }}</div></div>
+            </div>
+        </div>
+
+        <!-- 근로조건 -->
+        <div class="section">
+            <div class="section-title">📅 근로조건</div>
+            <div class="info-grid">
+                <div class="info-row"><label>계약기간</label>
+                    <div class="val">
+                        {% if worker.contract_start %}{{ worker.contract_start }}{% else %}미지정{% endif %}
+                        ~
+                        {% if worker.contract_end %}{{ worker.contract_end }}{% else %}미지정{% endif %}
+                    </div>
+                </div>
+                <div class="info-row"><label>직책 / 담당</label><div class="val">{{ worker.position or '일반직원' }}</div></div>
+                <div class="info-row"><label>시급</label><div class="val">{{ "{:,}".format(worker.hourly_rate or 0) }}원 (2024년 최저임금: 9,860원)</div></div>
+                <div class="info-row"><label>급여 지급일</label><div class="val">매월 말일</div></div>
+            </div>
+
+            {% if worker.work_schedule %}
+            <div style="margin-top:16px;">
+                <div style="font-size:0.78rem; font-weight:900; color:#6b7280; margin-bottom:8px;">요일별 근무시간</div>
+                <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                {% set day_labels = {'mon':'월','tue':'화','wed':'수','thu':'목','fri':'금','sat':'토','sun':'일'} %}
+                {% for key, label in day_labels.items() %}
+                    {% if key in worker.work_schedule %}
+                    <span style="background:#eff6ff; color:#1d4ed8; padding:4px 12px; border-radius:20px; font-size:0.82rem; font-weight:700;">
+                        {{ label }}: {{ worker.work_schedule[key].get('in','?') }}~{{ worker.work_schedule[key].get('out','?') }}
+                    </span>
+                    {% endif %}
+                {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 약관 조항 -->
+        <div class="section">
+            <div class="section-title">📜 계약 조항</div>
+            <ul class="clause-list">
+                <li>근로자는 정해진 근무시간을 성실히 준수하며, QR코드 시스템을 통해 출퇴근을 기록한다. 출퇴근 기록은 정해진 시간 전후 5분 이내에만 가능하다.</li>
+                <li>사용자는 매월 말일에 근로자의 근무시간에 따라 산출된 급여를 근로자가 등록한 계좌로 지급한다.</li>
+                <li>근로자가 정당한 이유 없이 무단결근하는 경우, 해당 일의 급여는 지급하지 않으며, 3일 이상 무단결근 시 계약을 해지할 수 있다.</li>
+                <li>근무 중 발생하는 업무상 재해에 대해서는 사용자가 산재보험법에 따라 처리한다.</li>
+                <li>근로자는 매장의 기밀 정보(메뉴 원가, 고객 정보, 매출 데이터 등)를 외부에 누설하지 않는다.</li>
+                <li>계약 해지를 원하는 경우, 최소 2주 전에 상대방에게 서면 또는 문자로 통보하여야 한다.</li>
+                <li>본 계약서에 명시되지 않은 사항은 근로기준법 및 관련 법령에 따른다.</li>
+            </ul>
+        </div>
+
+        <!-- 서명 -->
+        <div class="sign-section">
+            <div class="sign-box">
+                <div class="sign-label">사용자 (대표) 서명</div>
+                <div class="sign-name">{{ store.ceo_name or store.name }}</div>
+                <canvas id="sig-owner" class="sig-canvas" width="300" height="100"></canvas>
+                <div class="sign-btns no-print">
+                    <button class="btn-clear" onclick="clearSig('sig-owner')">지우기</button>
+                </div>
+            </div>
+            <div class="sign-box">
+                <div class="sign-label">근로자 서명</div>
+                <div class="sign-name">{{ worker.full_name or worker.username }}</div>
+                <canvas id="sig-worker" class="sig-canvas" width="300" height="100"></canvas>
+                <div class="sign-btns no-print">
+                    <button class="btn-clear" onclick="clearSig('sig-worker')">지우기</button>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top:20px; font-size:0.8rem; color:#9ca3af; text-align:center;">
+            위 계약서를 충분히 검토하고 자유로운 의사로 서명합니다.<br>
+            계약일: {{ now_date }} &nbsp;|&nbsp; MQnet 인력 관리 시스템
+        </div>
+    </div>
+
+    <div class="action-bar no-print">
+        <button class="btn btn-outline" onclick="history.back()">← 돌아가기</button>
+        <button class="btn btn-primary" onclick="window.print()">🖨️ 인쇄 / PDF 저장</button>
+        <button class="btn btn-success" id="btn-save" onclick="saveSignatures()">✅ 서명 저장</button>
+    </div>
+</div>
+
+<script>
+// ─── 서명 패드 ───
+function initSigPad(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext('2d');
+    ctx.strokeStyle = '#1a1a2e';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    let drawing = false;
+    let lastX = 0, lastY = 0;
+
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const src = e.touches ? e.touches[0] : e;
+        return [(src.clientX - rect.left) * scaleX, (src.clientY - rect.top) * scaleY];
+    }
+
+    canvas.addEventListener('mousedown',   e => { drawing = true; [lastX, lastY] = getPos(e); });
+    canvas.addEventListener('touchstart',  e => { e.preventDefault(); drawing = true; [lastX, lastY] = getPos(e); }, {passive:false});
+    canvas.addEventListener('mouseup',     () => { drawing = false; canvas.classList.add('signed'); });
+    canvas.addEventListener('touchend',    () => { drawing = false; canvas.classList.add('signed'); });
+    canvas.addEventListener('mouseleave',  () => { drawing = false; });
+    canvas.addEventListener('mousemove',   e => {
+        if (!drawing) return;
+        const [x, y] = getPos(e);
+        ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); ctx.stroke();
+        [lastX, lastY] = [x, y];
+    });
+    canvas.addEventListener('touchmove', e => {
+        if (!drawing) return;
+        e.preventDefault();
+        const [x, y] = getPos(e);
+        ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); ctx.stroke();
+        [lastX, lastY] = [x, y];
+    }, {passive:false});
+}
+
+function clearSig(id) {
+    const canvas = document.getElementById(id);
+    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    canvas.classList.remove('signed');
+}
+
+// ─── 서명 저장 API 호출 ───
+async function saveSignatures() {
+    const ownerSig = document.getElementById('sig-owner').toDataURL('image/png');
+    const workerSig = document.getElementById('sig-worker').toDataURL('image/png');
+    const WORKER_ID = {{ worker.id }};
+    const SLUG = "{{ store.id }}";
+
+    try {
+        const res = await fetch(`/api/staff/${WORKER_ID}/save-contract`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                signature_owner: ownerSig,
+                signature_worker: workerSig,
+                store_id: SLUG
+            })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            alert('✅ 서명이 저장되었습니다. 인쇄하여 별도 보관하세요.');
+        } else {
+            alert('❌ 저장 실패: ' + (data.message || '오류'));
+        }
+    } catch(e) {
+        alert('서버 통신 오류: ' + e.message);
+    }
+}
+
+initSigPad('sig-owner');
+initSigPad('sig-worker');
+</script>
+</body>
+</html>

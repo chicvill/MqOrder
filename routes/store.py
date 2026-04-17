@@ -266,6 +266,62 @@ def init_store_routes(app):
             'start_date': start_date.strftime('%Y-%m-%d')
         })
 
+    @app.route('/api/<slug>/stats/export/csv')
+    @store_access_required
+    def api_export_stats_csv(slug):
+        """매출 통계를 CSV 파일로 내보냅니다."""
+        import csv
+        import io as _io
+        from flask import make_response
+
+        period = request.args.get('period', 'month')
+        try:
+            from zoneinfo import ZoneInfo
+            store = db.session.get(Store, slug)
+            tz = ZoneInfo(store.timezone if store and store.timezone else 'Asia/Seoul')
+        except Exception:
+            from datetime import timezone as dt_timezone
+            tz = dt_timezone(timedelta(hours=9))
+
+        now_local = datetime.now(tz)
+        if period == 'week':
+            local_start = (now_local - timedelta(days=now_local.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+        elif period == 'year':
+            local_start = now_local.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        else:  # month (default)
+            local_start = now_local.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        from datetime import timezone as utc_tz
+        start_utc = local_start.astimezone(utc_tz.utc).replace(tzinfo=None)
+
+        orders = Order.query.filter(
+            Order.store_id == slug,
+            Order.status == 'paid',
+            Order.paid_at >= start_utc
+        ).order_by(Order.paid_at.desc()).all()
+
+        output = _io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['날짜', '주문번호', '테이블', '메뉴 목록', '결제금액', '결제수단', '포인트번호'])
+        for o in orders:
+            paid_kst = (o.paid_at + timedelta(hours=9)).strftime('%Y-%m-%d %H:%M') if o.paid_at else '-'
+            items_str = ' / '.join([f"{i.name}×{i.quantity}" for i in o.items]) if o.items else '-'
+            writer.writerow([
+                paid_kst,
+                o.order_no or o.id[:8],
+                f"{o.table_id}번",
+                items_str,
+                f"{o.total_price:,}",
+                o.payment_method or '-',
+                o.phone or '-'
+            ])
+
+        filename = f"{slug}_매출_{now_local.strftime('%Y%m%d')}.csv"
+        response = make_response('\ufeff' + output.getvalue())  # BOM for Excel
+        response.headers['Content-Type'] = 'text/csv; charset=utf-8'
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
     @app.route('/api/<slug>/customers')
     @store_access_required
     def api_get_store_customers(slug):

@@ -9,13 +9,12 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(20), default='owner') # admin, owner, staff
+    role = db.Column(db.String(20), default='owner') # admin, owner, manager, worker
     store_id = db.Column(db.String(50), db.ForeignKey('stores.id'), nullable=True)
     full_name = db.Column(db.String(100), nullable=True) # 파트너 실명
     phone = db.Column(db.String(20), nullable=True) # 파트너 연락처
-    is_approved = db.Column(db.Boolean, default=False) # 관리자 승인 여부 (staff 전용)
-    agreed_at = db.Column(db.DateTime, nullable=True) # 약관 동의 일시
-    
+    is_approved = db.Column(db.Boolean, default=True)
+
     # [신규] 급여 지급용 계좌 정보
     bank_name = db.Column(db.String(50), nullable=True)
     account_no = db.Column(db.String(50), nullable=True)
@@ -30,7 +29,13 @@ class User(db.Model):
     contract_start = db.Column(db.Date, nullable=True)
     contract_end = db.Column(db.Date, nullable=True)
 
+    # [법적 의무] 주민번호 일부 암호화 저장
+    # 저장 형식: 앞 6자리(생년월일) + 뒷자리 첫 1자리(성별) = 7자리만 Fernet 암호화 저장
+    # 전체 주민번호는 절대 저장하지 않습니다. (개인정보보호법 제24조 준수)
+    id_number_enc = db.Column(db.Text, nullable=True)  # 암호화된 주민번호 앞7자리
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 
 class Store(db.Model):
     __tablename__ = 'stores'
@@ -57,7 +62,6 @@ class Store(db.Model):
     
     # [신규] 전문 영업 및 계약용 필드
     signature_owner = db.Column(db.Text, nullable=True)   # 점주 서명 데이터 (Base64)
-    signature_partner = db.Column(db.Text, nullable=True) # 파트너 서명 데이터
     theme_color = db.Column(db.String(20), default='#3b82f6') # 주문창 UI 색상
     contact_phone = db.Column(db.String(50), nullable=True)    # 예약/배달용 번호
     point_ratio = db.Column(db.Float, default=0.0)             # 포인트 적립 비율
@@ -72,8 +76,6 @@ class Store(db.Model):
     wifi_ssid = db.Column(db.String(100), nullable=True)
     wifi_pw = db.Column(db.String(100), nullable=True)
 
-    # 영업 담당자 (직원)
-    recommended_by = db.Column(db.Integer, db.ForeignKey('users.id'))
 
     # [글로벌] 매장별 타임존 (기본 대한민국)
     timezone = db.Column(db.String(50), default='Asia/Seoul')
@@ -81,9 +83,6 @@ class Store(db.Model):
     # 출퇴근 승인용 보안 PIN (bcrypt 해시 저장)
     attendance_pin = db.Column(db.String(255), default='0000')
     
-    # [정산] 수수료율 (정산 시 활용)
-    commission_rate = db.Column(db.Float, default=0.0)
-
     # [통계] 데이터 리셋 기준 시간
     stats_reset_at = db.Column(db.DateTime, nullable=True)
     
@@ -96,7 +95,6 @@ class Store(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     users = db.relationship('User', backref='store_ptr', lazy=True, foreign_keys=[User.store_id])
-    manager = db.relationship('User', backref='managed_stores', lazy=True, foreign_keys=[recommended_by])
 
     def to_dict(self):
         return {
@@ -255,6 +253,10 @@ class Customer(db.Model):
     total_spent = db.Column(db.Integer, default=0)
     last_accumulation_at = db.Column(db.DateTime, default=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # [신규] 고객 간편결제용 빌링키 (토스페이먼츠 카드 등록 후 발급)
+    billing_key = db.Column(db.String(100), nullable=True)
+    customer_key = db.Column(db.String(100), nullable=True)  # 토스 customerKey
+
 
     __table_args__ = (db.UniqueConstraint('store_id', 'phone', name='_store_phone_uc'),)
 

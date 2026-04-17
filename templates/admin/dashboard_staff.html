@@ -1,79 +1,8 @@
+{# dashboard_staff.html 삭제됨 - 파트너 기능 2026-04-17 폐기 #}
 {% extends "admin/base.html" %}
-{% set active_page = 'dashboard' %}
-
-{% block title %}Partner Dashboard | MQnet{% endblock %}
-
-{% block extra_style %}
-<style>
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
-    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 25px; display: flex; align-items: center; gap: 15px; }
-
-    .tree-menu-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; margin-bottom: 40px; }
-    .tree-category { background: rgba(245, 158, 11, 0.03); border: 1px dashed var(--warning); border-radius: 24px; padding: 25px; }
-    .tree-title { font-size: 1rem; font-weight: 800; color: var(--warning); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
-    .tree-list { list-style: none; padding-left: 15px; border-left: 2px solid var(--border); }
-    .tree-item { margin-bottom: 12px; position: relative; }
-    .tree-item::before { content: ""; position: absolute; left: -17px; top: 12px; width: 12px; height: 1px; background: var(--border); }
-    .tree-link { text-decoration: none; color: var(--text-dim); font-size: 0.9rem; font-weight: 600; transition: 0.2s; display: flex; align-items: center; gap: 8px; }
-    .tree-link:hover { color: white; transform: translateX(5px); }
-    .tree-link i { color: var(--warning); }
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="header" style="margin-bottom: 30px;">
-    <h1><i data-lucide="award" style="vertical-align: middle; margin-right: 10px; color: var(--warning);"></i> {{ session['username'] }} 파트너님, 반갑습니다!</h1>
-</div>
-
-<!-- 1. 파트너 핵심 지표 -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <div style="width:50px; height:50px; border-radius:12px; background:rgba(245, 158, 11, 0.1); color:var(--warning); display:flex; align-items:center; justify-content:center;"><i data-lucide="briefcase"></i></div>
-        <div>
-            <div style="font-size:0.75rem; color:var(--text-dim);">누적 유치 매장</div>
-            <div style="font-size:1.3rem; font-weight:900;">{{ total_stores }}개</div>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div style="width:50px; height:50px; border-radius:12px; background:rgba(16, 185, 129, 0.1); color:var(--accent); display:flex; align-items:center; justify-content:center;"><i data-lucide="wallet"></i></div>
-        <div>
-            <div style="font-size:0.75rem; color:var(--text-dim);">이번 달 정산 예정액</div>
-            <div style="font-size:1.3rem; font-weight:900;">{{ "{:,.0f}".format(my_commission) }}원</div>
-        </div>
-    </div>
-</div>
-
-<!-- 2. 🌴 파트너 전용 영업 트리 메뉴 -->
-<h3 style="margin-bottom: 20px; font-size: 0.9rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px;">
-    <i data-lucide="trending-up" size="16"></i> Partner Sales Tree
-</h3>
-<div class="tree-menu-container">
-    <!-- 가맹점 유치 및 사후 관리 -->
-    <div class="tree-category">
-        <div class="tree-title"><i data-lucide="users"></i> 가맹점 관리</div>
-        <ul class="tree-list">
-            <li class="tree-item"><a href="/admin/stores" class="tree-link"><i data-lucide="search"></i> 내 담당 가맹점 목록 조회</a></li>
-            <li class="tree-item"><a href="/admin/stores/add" class="tree-link"><i data-lucide="plus-square"></i> 신규 가맹점 등록/제안</a></li>
-            <li class="tree-item"><a href="/admin/manual/staff" class="tree-link"><i data-lucide="book-open"></i> 파트너십 상생 운영 매뉴얼</a></li>
-        </ul>
-    </div>
-
-    <!-- 실적 및 정산 -->
-    <div class="tree-category">
-        <div class="tree-title"><i data-lucide="bar-chart"></i> 실적 및 정산 리포트</div>
-        <ul class="tree-list">
-            <li class="tree-item"><a href="/admin/performance" class="tree-link"><i data-lucide="line-chart"></i> 월별 목표 달성도 및 매출 통계</a></li>
-            <li class="tree-item"><a href="/admin/billing" class="tree-link"><i data-lucide="credit-card"></i> 가맹점 결제 상태 및 수당 확인</a></li>
-        </ul>
-    </div>
-
-    <!-- 보안 및 로그아웃 (단순화) -->
-    <div class="tree-category" style="background: rgba(15, 23, 42, 0.4); border-color: var(--border); border-style: solid;">
-        <div class="tree-title" style="color:var(--text-dim);"><i data-lucide="shield"></i> 보안 및 시스템</div>
-        <ul class="tree-list">
-            <li class="tree-item"><a href="/profile" class="tree-link"><i data-lucide="key"></i> 내 계정 보안 설정</a></li>
-            <li class="tree-item"><a href="/logout" class="tree-link" style="color:var(--danger);"><i data-lucide="log-out"></i> 시스템 안전 로그아웃</a></li>
-        </ul>
-    </div>
+<div style="text-align:center; padding:60px; color:#64748b;">
+    <p>이 페이지는 사용되지 않습니다.</p>
+    <a href="/admin" style="color:#3b82f6;">관리자 홈으로 이동</a>
 </div>
 {% endblock %}

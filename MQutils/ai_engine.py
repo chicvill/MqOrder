@@ -172,8 +172,59 @@ def handle_chat_order(store_name, menu_data, user_message, cart, history=None, o
     except Exception as e:
         return {"reply": f"AI 통신 오류: {str(e)}", "action": {"type": "none"}}
 
-def get_ai_recommended_menu(store_name, menu_data, order_history=None):
-    return {"recommendations": [], "reason": "준비 중"}
+def get_ai_recommended_menu(store_name_or_type, menu_data=None, order_history=None):
+    """
+    매장 정보와 주문 이력을 분석하여 AI 메뉴 추천을 생성합니다.
+    - store_name_or_type: 매장명 또는 업종 키워드
+    - menu_data: 매장 메뉴 딕셔너리 (없으면 업종 기반으로만 추천)
+    - order_history: 최근 주문 목록 [{'name': ..., 'count': ...}]
+    """
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return {"recommendations": [], "reason": "API 키 미설정"}
+
+    http_client = httpx.Client(trust_env=False)
+    client = OpenAI(api_key=api_key, http_client=http_client)
+
+    from datetime import datetime as _dt
+    hour = _dt.now().hour
+    time_context = "아침" if hour < 10 else ("점심" if hour < 14 else ("저녁" if hour < 19 else "야식"))
+
+    menu_summary = ""
+    if menu_data:
+        items = []
+        for cat, list_ in menu_data.items():
+            for item in (list_ if isinstance(list_, list) else []):
+                items.append(f"{item.get('name','?')}({item.get('price',0):,}원)")
+        menu_summary = ", ".join(items[:30])
+
+    history_summary = ""
+    if order_history:
+        tops = sorted(order_history, key=lambda x: x.get('count', 0), reverse=True)[:5]
+        history_summary = ", ".join([f"{x['name']}({x['count']}건)" for x in tops])
+
+    prompt = f"""
+당신은 {store_name_or_type} 매장의 AI 메뉴 추천 시스템입니다.
+현재 시간대: {time_context} ({hour}시)
+메뉴 목록(일부): {menu_summary or '없음'}
+최근 인기 메뉴: {history_summary or '데이터 없음'}
+
+위 정보를 바탕으로 고객에게 추천할 메뉴 3가지를 JSON으로 반환하세요.
+JSON 형식: {{"recommendations": [{{"name": "메뉴명", "reason": "추천 이유 1문장", "emoji": "이모지"}}]}}
+- 시간대에 맞고 인기 있는 메뉴를 우선 추천
+- reason은 친근하고 짧게 (20자 이내)
+"""
+
+    try:
+        res = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            max_tokens=300
+        )
+        return json.loads(res.choices[0].message.content)
+    except Exception as e:
+        return {"recommendations": [], "reason": f"추천 오류: {str(e)[:50]}"}
 
 def get_ai_operation_insight(store_name, sales_data=None):
     """매장 매출 데이터를 분석하여 AI 인사이트를 제공합니다."""

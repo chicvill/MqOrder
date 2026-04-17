@@ -180,34 +180,7 @@
         </div>
     </div>
 
-    {% if session['role'] in ['admin', 'staff'] %}
-    <div class="printable-area" id="partner-section" style="margin-top:1rem;">
-        <div class="table-container" style="border-left: 3px solid var(--neon-warning);">
-            <h3 style="margin: 0 0 0.8rem 0; font-size: 0.85rem; color: #f59e0b;"><i data-lucide="award" size="14" style="vertical-align:middle;"></i> 파트너 수당 (10%)</h3>
-            <div style="overflow-x: auto;">
-                <table class="wage-table">
-                    <thead><tr><th>명칭</th><th>연락처</th><th>매출</th><th>수당</th><th class="no-print">상태</th></tr></thead>
-                    <tbody>
-                        {% set found = false %}
-                        {% for report in partner_reports %}
-                            {% if session['role'] == 'admin' or report.user.id == session['user_id'] %}
-                                {% set found = true %}
-                                <tr>
-                                    <td style="font-weight: 800;">{{ report.user.full_name or report.user.username }}</td>
-                                    <td style="font-size:0.75rem; color:var(--text-dim);">{{ report.user.phone|format_phone }}</td>
-                                    <td style="font-size:0.8rem;">{{ "{:,.0f}".format(report.period_sales) }}</td>
-                                    <td style="font-weight: 900; color: #f59e0b;">{{ "{:,.0f}".format(report.commission) }}</td>
-                                    <td class="no-print"><span style="font-size:0.65rem; color:var(--accent-emerald);">LIVE</span></td>
-                                </tr>
-                            {% endif %}
-                        {% endfor %}
-                        {% if not found %}<tr><td colspan="5" style="padding:20px; text-align:center; color:var(--text-dim); font-size:0.8rem;">데이터가 없습니다.</td></tr>{% endif %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    {% endif %}
+
 
     <!-- Bulk Approve Modal -->
     <div id="bulk-approve-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:12000; display:none; justify-content:center; align-items:center; backdrop-filter:blur(5px);">

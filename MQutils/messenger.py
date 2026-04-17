@@ -88,39 +88,62 @@ class SolapiMessenger(metaclass=Singleton):
         return self.send_email(to_email, subject, body)
 
     def send_alimtalk(self, to_phone, template_id, variables):
-        """카카오 알림톡을 발송합니다."""
+        """카카오 알림톡을 Solapi V4 규격으로 발송합니다."""
         print(f"💬 [Alimtalk] {to_phone}님께 알림톡 발송 시도 ({template_id})")
-        # 실제 API 호출 로직 (Simulator)
-        if self.api_key == 'MOCK_KEY':
-            print(f"📦 [Mock] 알림톡 전송 완료: {variables}")
+
+        if self.simulation:
+            print(f"📦 [Simulation] 알림톡 시뮬레이션: {variables}")
             return True
-            
-        # [실제] 솔라피 알림톡 발송 (연동 완료)
+
         try:
-            import hmac, hashlib
-            msg = {
-                "message": {
+            import hmac
+            import hashlib
+            import uuid as _uuid
+            from datetime import datetime as _dt
+
+            # Solapi V4 HMAC-SHA256 서명 생성
+            date_str = _dt.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+            salt = str(_uuid.uuid4()).replace('-', '')[:32]
+            sign_str = date_str + salt
+            signature = hmac.new(
+                self.api_secret.encode('utf-8'),
+                sign_str.encode('utf-8'),
+                hashlib.sha256
+            ).hexdigest()
+
+            headers = {
+                'Authorization': f'HMAC-SHA256 apiKey={self.api_key}, date={date_str}, salt={salt}, signature={signature}',
+                'Content-Type': 'application/json; charset=utf-8'
+            }
+
+            payload = {
+                "messages": [{
                     "to": to_phone.replace("-", ""),
                     "from": self.sender_no,
                     "type": "ATA",
-                    "templateId": template_id,
                     "kakaoOptions": {
-                        "pfid": self.pfid,
+                        "pfId": self.pfid,
+                        "templateId": template_id,
                         "variables": variables
                     }
-                }
+                }]
             }
-            
-            # 발송 로직 (Solapi V4 규격)
-            # 여기서는 단순화하여 시뮬레이션 모드가 아닐 때만 실제 전송 시도
-            if not self.simulation:
-                # headers = self._get_headers() # 실제 연동 시 시그니처 생성 필요
-                # requests.post(self.base_url, json=msg, headers=headers)
-                print(f"📡 [Solapi API] 실발송 요청 전송됨: {to_phone}")
-            return True
+
+            resp = requests.post(self.base_url, json=payload, headers=headers, timeout=10)
+            result = resp.json()
+
+            if resp.status_code == 200 and result.get('groupId'):
+                print(f"✅ [Alimtalk Sent] {to_phone} → groupId: {result.get('groupId')}")
+                return True
+            else:
+                err = result.get('errorCode', 'UNKNOWN')
+                print(f"❌ [Alimtalk API Error] {err}: {result.get('errorMessage', '')}")
+                return False
+
         except Exception as e:
-            print(f"❌ [Alimtalk Error] {e}")
+            print(f"❌ [Alimtalk Exception] {e}")
             return False
+
 
     def send_waiting_notice(self, to_phone, name, count, store_name="MQnet 매장"):
         """웨이팅 등록 안내 (알림톡 우선, 실패 시 SMS)"""

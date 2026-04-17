@@ -83,29 +83,32 @@ def home():
     elif user.role == 'owner':
         store = db.session.get(Store, user.store_id) if user.store_id else None
         if store:
-            # store_id를 URL에 직접 내장하는 빠른 실행 아이콘 메뉴
+            sid = store.id
+            # 빠른 실행 아이콘 그리드
             quick_items = [
-                {'name': '실시간 카운터',  'url': f"/counter",
+                {'name': '카운터',        'url': f'/{sid}/counter',
                  'icon': 'fa-desktop',     'icon_class': 'cyan'},
-                {'name': '주방 대시보드',  'url': f"/kitchen",
+                {'name': '주방',          'url': f'/{sid}/kitchen',
                  'icon': 'fa-utensils',    'icon_class': 'orange'},
-                {'name': '매출 통계',      'url': f"/admin/manage/{store.id}",
+                {'name': '전광판',        'url': f'/{sid}/display',
+                 'icon': 'fa-tv',          'icon_class': 'purple'},
+                {'name': '매장 통계',     'url': f'/{sid}/stats',
                  'icon': 'fa-chart-bar',   'icon_class': 'blue'},
-                {'name': 'QR 코드 인쇄',  'url': f"/qr_print/{store.id}",
-                 'icon': 'fa-qrcode',      'icon_class': 'purple'},
-                {'name': '구독 / 결제',    'url': '/billing',
-                 'icon': 'fa-credit-card', 'icon_class': 'green'},
-                {'name': '매장 설정',      'url': f"/admin/manage/{store.id}?tab=settings",
+                {'name': 'QR 코드 인쇄',  'url': f'/qr_print/{sid}',
+                 'icon': 'fa-qrcode',      'icon_class': 'green'},
+                {'name': '주문 (테스트)', 'url': f'/{sid}/customer/1',
+                 'icon': 'fa-mobile-screen','icon_class': 'cyan'},
+                {'name': '매장 설정',     'url': f'/admin/stores/{sid}/config',
                  'icon': 'fa-gear',        'icon_class': 'orange'},
             ]
             menu_tree.append({'name': '매장 관리', 'store': store, 'children': quick_items})
 
-            # 추가 메뉴 리스트
+            # 추가 메뉴 리스트 (웨이팅은 입구 QR 스캔으로만 접근)
             extra_items = [
-                {'name': '직원 근태 관리', 'url': '/attendance',
+                {'name': '직원 근태 관리', 'url': f'/admin/attendance/{sid}',
                  'icon': 'fa-clock', 'icon_class': 'cyan'},
-                {'name': '웨이팅 관리',   'url': f"/waiting",
-                 'icon': 'fa-list-ol', 'icon_class': 'blue'},
+                {'name': '구독 / 결제',   'url': '/billing',
+                 'icon': 'fa-credit-card', 'icon_class': 'green'},
             ]
             menu_tree.append({'name': '운영 도구', 'children': extra_items})
         else:

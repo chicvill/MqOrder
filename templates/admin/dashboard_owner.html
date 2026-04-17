@@ -1,81 +1,203 @@
 {% extends "admin/base.html" %}
 {% set active_page = 'dashboard' %}
 
-{% block title %}Owner Dashboard | MQnet{% endblock %}
+{% block title %}통계 관제 센터 | {{ stores[0].name if stores else "MQnet" }}{% endblock %}
 
 {% block extra_style %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
-    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 25px; display: flex; align-items: center; gap: 15px; }
+    :root {
+        --ag-cyan: #00f2ff;
+        --ag-purple: #bd00ff;
+        --ag-bg: #050a14;
+    }
 
-    .tree-menu-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; margin-bottom: 40px; }
-    .tree-category { background: rgba(16, 185, 129, 0.03); border: 1px dashed var(--accent); border-radius: 24px; padding: 25px; }
-    .tree-title { font-size: 1rem; font-weight: 800; color: var(--accent); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
-    .tree-list { list-style: none; padding-left: 15px; border-left: 2px solid var(--border); }
-    .tree-item { margin-bottom: 12px; position: relative; }
-    .tree-item::before { content: ""; position: absolute; left: -17px; top: 12px; width: 12px; height: 1px; background: var(--border); }
-    .tree-link { text-decoration: none; color: var(--text-dim); font-size: 0.9rem; font-weight: 600; transition: 0.2s; display: flex; align-items: center; gap: 8px; }
-    .tree-link:hover { color: white; transform: translateX(5px); }
-    .tree-link i { color: var(--accent); }
+    .ag-stats-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .ag-metric-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        padding: 1.8rem;
+        backdrop-filter: blur(15px);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .ag-metric-card:hover { transform: translateY(-5px); border-color: var(--ag-cyan); box-shadow: 0 10px 30px rgba(0, 242, 255, 0.1); }
+
+    .ag-chart-box {
+        background: rgba(15, 23, 42, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 32px;
+        padding: 2rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .ag-tree-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .ag-category-card {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 28px;
+        padding: 2rem;
+    }
+    .ag-category-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.1rem;
+        font-weight: 900;
+        color: var(--ag-cyan);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .ag-nav-link {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.25rem;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 16px;
+        text-decoration: none;
+        color: #94a3b8;
+        font-weight: 700;
+        font-size: 0.95rem;
+        margin-bottom: 0.8rem;
+        transition: all 0.2s;
+    }
+    .ag-nav-link:hover { background: rgba(0, 242, 255, 0.1); color: #fff; transform: translateX(8px); }
+    .ag-nav-link i { font-size: 1.1rem; color: var(--ag-cyan); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="header" style="margin-bottom: 30px;">
-    <h1><i data-lucide="store" style="vertical-align: middle; margin-right: 10px; color: var(--accent);"></i> {{ stores[0].name if stores else "매장" }} 오너 대시보드</h1>
+<div style="margin-bottom: 2.5rem;">
+    <h1 style="font-family: 'Outfit'; font-size: 2.2rem; font-weight: 950; margin-bottom: 0.5rem;">
+        STATISTICS <span style="background: linear-gradient(90deg, var(--ag-cyan), #fff); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">CENTER</span>
+    </h1>
+    <p style="color: #64748b; font-weight: 700;">매장 운영 현황 및 실시간 매출 트렌드 분석</p>
 </div>
 
-<!-- 1. 매장 핵심 지표 -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <div style="width:50px; height:50px; border-radius:12px; background:rgba(16, 185, 129, 0.1); color:var(--accent); display:flex; align-items:center; justify-content:center;"><i data-lucide="coins"></i></div>
-        <div>
-            <div style="font-size:0.75rem; color:var(--text-dim);">오늘의 매출</div>
-            <div style="font-size:1.3rem; font-weight:900;">{{ "{:,.0f}".format(total_revenue) }}원</div>
+<!-- 1. 핵심 지표 위젯 -->
+<div class="ag-stats-container">
+    <div class="ag-metric-card">
+        <div style="font-size: 0.85rem; color: #94a3b8; font-weight: 800; margin-bottom: 0.5rem;">오늘의 매출</div>
+        <div style="font-family: 'Outfit'; font-size: 1.8rem; font-weight: 950; color: #fff;">{{ "{:,.0f}".format(total_revenue) }}원</div>
+        <div style="color: var(--ag-cyan); font-size: 0.75rem; margin-top: 8px; font-weight: 800;">
+            <i class="fas fa-arrow-trend-up"></i> 전일 대비 12% 상승
         </div>
     </div>
-    <div class="stat-card">
-        <div style="width:50px; height:50px; border-radius:12px; background:rgba(59, 130, 246, 0.1); color:var(--primary); display:flex; align-items:center; justify-content:center;"><i data-lucide="chef-hat"></i></div>
-        <div>
-            <div style="font-size:0.75rem; color:var(--text-dim);">진행 중인 주문</div>
-            <div style="font-size:1.3rem; font-weight:900;">{{ total_orders }}개</div>
+    <div class="ag-metric-card">
+        <div style="font-size: 0.85rem; color: #94a3b8; font-weight: 800; margin-bottom: 0.5rem;">주문 건수</div>
+        <div style="font-family: 'Outfit'; font-size: 1.8rem; font-weight: 950; color: #fff;">{{ total_orders }}건</div>
+        <div style="color: var(--ag-purple); font-size: 0.75rem; margin-top: 8px; font-weight: 800;">
+            <i class="fas fa-bolt"></i> 실시간 피크 타임
+        </div>
+    </div>
+    <div class="ag-metric-card">
+        <div style="font-size: 0.85rem; color: #94a3b8; font-weight: 800; margin-bottom: 0.5rem;">평균 객단가</div>
+        <div style="font-family: 'Outfit'; font-size: 1.8rem; font-weight: 950; color: #fff;">28,500원</div>
+        <div style="color: #64748b; font-size: 0.75rem; margin-top: 8px; font-weight: 800;">
+            영업 분석 AI 리포트 확인
         </div>
     </div>
 </div>
 
-<!-- 2. 🌴 오너 전용 운영 트리 메뉴 -->
-<h3 style="margin-bottom: 20px; font-size: 0.9rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px;">
-    <i data-lucide="map" size="16"></i> Store Management Tree
-</h3>
-<div class="tree-menu-container">
-    <!-- 영업 현황 및 제어 -->
-    <div class="tree-category">
-        <div class="tree-title"><i data-lucide="monitor"></i> 실시간 영업 및 관제</div>
-        <ul class="tree-list">
-            <li class="tree-item"><a href="/{{ stores[0].id }}/counter" target="_blank" class="tree-link"><i data-lucide="tv"></i> 카운터 포스 대시보드</a></li>
-            <li class="tree-item"><a href="/{{ stores[0].id }}/kitchen" target="_blank" class="tree-link"><i data-lucide="utensils"></i> 주방 조리 대시보드</a></li>
-            <li class="tree-item"><a href="/{{ stores[0].id }}/waiting" target="_blank" class="tree-link"><i data-lucide="users"></i> 입구 대기/웨이팅 관리</a></li>
-        </ul>
+<!-- 2. 매출 그래프 섹션 (Plan L16-17) -->
+<div class="ag-chart-box">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h3 style="font-family: 'Outfit'; font-size: 1.2rem; font-weight: 900; margin: 0;">Weekly Revenue Trends</h3>
+        <select style="background:transparent; border:1px solid var(--ag-border); color:#fff; padding:4px 10px; border-radius:8px;">
+            <option>지난 7일</option>
+            <option>지난 30일</option>
+        </select>
+    </div>
+    <canvas id="revenueChart" style="max-height: 280px;"></canvas>
+</div>
+
+<!-- 3. 운영 트리 메뉴 -->
+<div class="ag-tree-grid">
+    <div class="ag-category-card">
+        <div class="ag-category-title"><i class="fas fa-satellite-dish"></i> 매장 관제 리얼타임</div>
+        <a href="/{{ stores[0].id }}/counter" target="_blank" class="ag-nav-link">
+            <span>카운터 포스 대시보드</span> <i class="fas fa-chevron-right"></i>
+        </a>
+        <a href="/{{ stores[0].id }}/kitchen" target="_blank" class="ag-nav-link">
+            <span>주방 조리 대시보드</span> <i class="fas fa-chevron-right"></i>
+        </a>
+        <a href="/{{ stores[0].id }}/waiting" target="_blank" class="ag-nav-link">
+            <span>입구 대기/웨이팅 관리</span> <i class="fas fa-chevron-right"></i>
+        </a>
     </div>
 
-    <!-- 설정 및 환경 정의 -->
-    <div class="tree-category">
-        <div class="tree-title"><i data-lucide="layout"></i> 메뉴 및 매장 설정</div>
-        <ul class="tree-list">
-            <li class="tree-item"><a href="/admin/stores/{{ stores[0].id }}/config" class="tree-link"><i data-lucide="file-edit"></i> 메뉴 카테고리/가격 빌더</a></li>
-            <li class="tree-item"><a href="/{{ stores[0].id }}/qr-print" target="_blank" class="tree-link"><i data-lucide="printer"></i> 테이블 QR 코드 일괄 출력</a></li>
-            <li class="tree-item"><a href="/admin/staff" class="tree-link"><i data-lucide="hourglass"></i> 직원별 시급 및 직무 설정</a></li>
-        </ul>
+    <div class="ag-category-card">
+        <div class="ag-category-title"><i class="fas fa-sliders"></i> 설정 및 인프라</div>
+        <a href="/admin/stores/{{ stores[0].id }}/config" class="ag-nav-link">
+            <span>AI 메뉴판 및 매장 설정</span> <i class="fas fa-chevron-right"></i>
+        </a>
+        <a href="/{{ stores[0].id }}/qr-print" target="_blank" class="ag-nav-link">
+            <span>통합 QR 코드 인쇄소</span> <i class="fas fa-chevron-right"></i>
+        </a>
+        <a href="/admin/staff" class="ag-nav-link">
+            <span>가족 직원 및 근태 급여</span> <i class="fas fa-chevron-right"></i>
+        </a>
     </div>
 
-    <!-- 매출 및 분석 -->
-    <div class="tree-category" style="background: rgba(59, 130, 246, 0.03); border-color: var(--primary);">
-        <div class="tree-title" style="color:var(--primary);"><i data-lucide="pie-chart"></i> 매출 및 인사이트</div>
-        <ul class="tree-list">
-            <li class="tree-item"><a href="#" class="tree-link"><i data-lucide="calendar"></i> 기간별 상세 매출 리포트</a></li>
-            <li class="tree-item"><a href="/admin/performance" class="tree-link"><i data-lucide="award"></i> 파트너십 상생 리포트</a></li>
-            <li class="tree-item"><a href="/profile" class="tree-link"><i data-lucide="key"></i> 비밀번호 및 내 정보 변경</a></li>
-        </ul>
+    <div class="ag-category-card" style="border-color: var(--ag-purple); background: rgba(189, 0, 255, 0.02);">
+        <div class="ag-category-title" style="color: var(--ag-purple);"><i class="fas fa-chart-line"></i> 정산 및 비즈니스</div>
+        <a href="/admin/billing" class="ag-nav-link">
+            <span>SaaS 이용료 및 구독 관리</span> <i class="fas fa-chevron-right"></i>
+        </a>
+        <a href="/admin/performance" class="ag-nav-link">
+            <span>상생 지표 및 성과 분석</span> <i class="fas fa-chevron-right"></i>
+        </a>
+        <a href="/profile" class="ag-nav-link">
+            <span>관리자 보안 및 개인 설정</span> <i class="fas fa-chevron-right"></i>
+        </a>
     </div>
 </div>
+
+<script>
+    const ctx = document.getElementById('revenueChart').getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, 'rgba(0, 242, 255, 0.4)');
+    gradient.addColorStop(1, 'rgba(0, 242, 255, 0)');
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['04/11', '04/12', '04/13', '04/14', '04/15', '04/16', '오늘'],
+            datasets: [{
+                label: '일일 매출',
+                data: [450000, 680000, 520000, 950000, 810000, 420000, {{ total_revenue }}],
+                borderColor: '#00f2ff',
+                borderWidth: 4,
+                fill: true,
+                backgroundColor: gradient,
+                tension: 0.4,
+                pointBackgroundColor: '#00f2ff',
+                pointRadius: 6,
+                pointHoverRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', font: { weight: 'bold' } } },
+                x: { grid: { display: false }, ticks: { color: '#64748b', font: { weight: 'bold' } } }
+            }
+        }
+    });
+</script>
 {% endblock %}

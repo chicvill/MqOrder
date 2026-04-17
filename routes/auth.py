@@ -22,9 +22,6 @@ def init_auth_routes(app):
                     return redirect(url_for('login'))
                 user = User.query.filter_by(username=username).first()
                 if user and check_password_hash(user.password, password):
-                    if user.role == 'staff' and not user.is_approved:
-                        flash('아직 관리자의 승인이 대기 중입니다.', 'error')
-                        return redirect(url_for('login'))
                     remember_me = request.form.get('remember_me') == 'yes'
                     
                     # [신규] 매장 설정에서 자동 로그아웃 방지가 켜져 있으면 강제로 permanent 설정
@@ -120,14 +117,13 @@ def init_auth_routes(app):
                 role='owner',
                 full_name=full_name,
                 phone=phone,
-                is_approved=True,
-                agreed_at=datetime.utcnow()
+                is_approved=True
             )
             db.session.add(new_user)
             db.session.flush()
 
-            # 매장 생성 (7일 무료 체험)
-            trial_expires = datetime.utcnow() + timedelta(days=7)
+            # 매장 생성 (30일 무료 체험 - 계획서 기준)
+            trial_expires = datetime.utcnow() + timedelta(days=30)
             new_store = Store(
                 id=store_id,
                 name=store_name,
@@ -136,8 +132,7 @@ def init_auth_routes(app):
                 ceo_name=full_name,
                 status='active',
                 payment_status='trial',
-                expires_at=trial_expires,
-                recommended_by=new_user.id
+                expires_at=trial_expires
             )
             db.session.add(new_store)
             db.session.flush()
@@ -164,7 +159,7 @@ def init_auth_routes(app):
                 'role': 'owner',
                 'store_id': store_id
             })
-            flash(f'🎉 환영합니다, {full_name}님! 7일 무료 체험이 시작되었습니다.', 'success')
+            flash(f'환영합니다, {full_name}님! 30일 무료 체험이 시작되었습니다. 만료 전에 구독을 시작하시면 서비스가 중단 없이 이어집니다.', 'success')
             return redirect(url_for('portal.home'))
 
         return render_template('register.html')

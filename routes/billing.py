@@ -315,6 +315,44 @@ def auto_collect_subscriptions(app):
         
         db.session.commit()
 
+        # ─── [2단계] Trial 만료 자동 정지 ───
+        # 빌링키 없이 무료 체험 기간이 지난 매장을 찾아서 정지 처리
+        expired_trials = Store.query.filter(
+            Store.billing_key.is_(None),
+            Store.payment_status == 'trial',
+            Store.expires_at <= now,
+            Store.status == 'active'
+        ).all()
+
+        print(f"⏰ [Trial-Expiry] {len(expired_trials)}개 무료 체험 만료 매장 정지 처리 중...")
+
+        for s in expired_trials:
+            s.status = 'suspended'
+            s.payment_status = 'expired'
+            print(f"🔒 [Trial-Expired] {s.name} 매장 정지 처리 완료")
+
+            # 점주에게 이메일 안내 발송
+            if s.business_email:
+                try:
+                    messenger = SolapiMessenger()
+                    subject = f"[MQnet] {s.name} 무료 체험 종료 안내"
+                    body = f"""
+                    <div style="font-family:sans-serif; max-width:600px; border:1px solid #eee; padding:30px; border-radius:15px;">
+                        <h2 style="color:#dc2626;">MQnet 무료 체험 종료 안내</h2>
+                        <p>안녕하세요, <b>{s.ceo_name or s.name}</b> 대표님.</p>
+                        <p>30일 무료 체험 기간이 만료되어 서비스가 일시 정지되었습니다.</p>
+                        <p>서비스를 계속 이용하시려면 <a href="https://mq.chicvill.store/billing" style="color:#2563eb; font-weight:bold;">구독 결제 페이지</a>에서 월 5만원 구독을 시작해 주세요.</p>
+                        <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
+                        <p style="font-size:0.85rem;color:#888;">결제 후 즉시 서비스가 재활성화됩니다.</p>
+                    </div>
+                    """
+                    messenger.send_email(s.business_email, subject, body)
+                except Exception as e:
+                    print(f"⚠️ [Trial-Expiry Email Error] {s.name}: {e}")
+
+        db.session.commit()
+
+
 
 @billing_bp.route('/api/billing/toss-fail', methods=['POST', 'GET'])
 def toss_payment_fail():

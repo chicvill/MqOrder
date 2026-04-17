@@ -64,8 +64,8 @@ def api_staff_check_in(slug):
     best_target = min(candidates, key=lambda t: abs((now_naive - t).total_seconds()))
     diff = abs((now_naive - best_target).total_seconds())
     
-    if diff > 600: # 10분 = 600초
-        return jsonify({'status': 'error', 'message': f'출근 가능 시간이 아닙니다. (정해진 시간: {in_time_str} 전후 10분 이내 가능)'}), 400
+    if diff > 300: # 5분 = 300초 (계획서 기준)
+        return jsonify({'status': 'error', 'message': f'출근 가능 시간이 아닙니다. (정해진 시간: {in_time_str} 전후 5분 이내 가능)'}), 400
 
     # 이미 출근 중인지 확인
     existing = Attendance.query.filter(Attendance.user_id==user_id, Attendance.store_id==slug, Attendance.status=='working').first()
@@ -135,8 +135,8 @@ def api_staff_check_out(slug):
     best_target = min(candidates, key=lambda t: abs((now_naive - t).total_seconds()))
     diff = abs((now_naive - best_target).total_seconds())
     
-    if diff > 600: # 10분 = 600초
-        return jsonify({'status': 'error', 'message': f'퇴근 가능 시간이 아닙니다. (정해진 시간: {out_time_str} 전후 10분 이내 가능)'}), 400
+    if diff > 300: # 5분 = 300초 (계획서 기준)
+        return jsonify({'status': 'error', 'message': f'퇴근 가능 시간이 아닙니다. (정해진 시간: {out_time_str} 전후 5분 이내 가능)'}), 400
 
     # [자동 승인] 정해진 시간에 퇴근한 것으로 기록
     # DB는 UTC로 저장하므로 현지 타임존을 강제 지정 후 UTC로 변환하여 저장
@@ -298,28 +298,19 @@ def admin_staff_mgmt():
     role = session.get('role')
     user_store_id = session.get('store_id')
     
-    if role not in ['admin', 'owner', 'staff', 'manager']:
+    if role not in ['admin', 'owner', 'manager']:
         return render_template('access_denied.html')
-    
+
     # [임금 수정 권한] 오직 어드민과 사장님(owner)만 시급 수정 가능
     can_edit_wage = (role in ['admin', 'owner'])
-    
-    # 영업 파트너(staff)는 본인 담당 매장만 접근 가능하도록 필터링
-    if role == 'staff':
-        managed_stores = Store.query.filter_by(recommended_by=user_id).all()
-        managed_ids = [s.id for s in managed_stores]
-        selected_slug = request.args.get('slug') or (managed_ids[0] if managed_ids else None)
-        if selected_slug not in managed_ids:
-            flash("해당 매장에 대한 관리 권한이 없습니다.")
-            return redirect(url_for('index'))
-        stores = managed_stores
-    elif role == 'admin':
+
+    if role == 'admin':
         stores = Store.query.all()
         selected_slug = request.args.get('slug') or (stores[0].id if stores else None)
     else:
         selected_slug = user_store_id
         stores = Store.query.filter_by(id=selected_slug).all()
-        
+
     store = db.session.get(Store, selected_slug) if selected_slug else None
     
     # [기간 설정] 기본값: 이번 달 1일부터 오늘까지
@@ -332,39 +323,37 @@ def admin_staff_mgmt():
     now = datetime.now(tz)
     start_str = request.args.get('start_date') or now.replace(day=1).strftime('%Y-%m-%d')
     end_str = request.args.get('end_date') or now.strftime('%Y-%m-%d')
-    
+
     # KST/현지 기준으로 받은 날짜를 UTC로 변환하여 DB 조회
     local_start = datetime.strptime(start_str, '%Y-%m-%d').replace(hour=0, minute=0, second=0, tzinfo=tz)
-    local_end = datetime.strptime(end_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59, tzinfo=tz)
-    
-    start_dt = local_start.astimezone(timezone.utc).replace(tzinfo=None)
-    end_dt = local_end.astimezone(timezone.utc).replace(tzinfo=None)
+    local_end   = datetime.strptime(end_str,   '%Y-%m-%d').replace(hour=23, minute=59, second=59, tzinfo=tz)
 
-    # 1. 현장 근로자(worker) 정밀 리포트 (일자별 내역 포함)
+    start_dt = local_start.astimezone(timezone.utc).replace(tzinfo=None)
+    end_dt   = local_end.astimezone(timezone.utc).replace(tzinfo=None)
+
+    # 현장 근로자(worker) 정밀 리포트 (일자별 내역 포함)
     workers = User.query.filter_by(store_id=selected_slug, role='worker').all()
     worker_reports = []
     for w in workers:
-        # 해당 기간의 모든 완료된 근태 기록 조회
         attendances = Attendance.query.filter(
-            Attendance.user_id == w.id, 
+            Attendance.user_id == w.id,
             Attendance.store_id == selected_slug,
             Attendance.check_in_at >= start_dt,
             Attendance.check_in_at <= end_dt,
             Attendance.status == 'completed'
         ).order_by(Attendance.check_in_at).all()
-        
+
         total_mins = sum((a.total_minutes or 0) for a in attendances)
         wage = int((total_mins / 60) * (w.hourly_rate or 0))
-        
-        # 일별 합산 내역 생성
+
         daily_details = []
         for att in attendances:
             if att.check_in_at:
                 daily_details.append({
-                    'date': att.check_in_at.strftime('%m-%d'),
+                    'date':  att.check_in_at.strftime('%m-%d'),
                     'start': att.check_in_at.strftime('%H:%M'),
-                    'end': att.check_out_at.strftime('%H:%M') if att.check_out_at else '-',
-                    'mins': att.total_minutes or 0
+                    'end':   att.check_out_at.strftime('%H:%M') if att.check_out_at else '-',
+                    'mins':  att.total_minutes or 0
                 })
 
         worker_reports.append({
@@ -374,30 +363,12 @@ def admin_staff_mgmt():
             'expected_wage': wage,
             'details': daily_details
         })
-    
-    # 2. 영업 파트너(staff) 수당 리포트 (매출 기반)
-    partners = User.query.filter_by(store_id=selected_slug, role='staff').all()
-    partner_reports = []
-    if store:
-        # 해당 기간의 총 매출(실제 결제 완료된 주문 기준)
-        total_sales = db.session.query(func.sum(Order.total_price))\
-            .filter(Order.store_id == selected_slug, Order.created_at >= start_dt, Order.created_at <= end_dt, Order.status == 'paid')\
-            .scalar() or 0
-        
-        # 사장님 정책: 매출의 10%를 해당 가맹점을 관리하는 파트너들에게 지급하는 구조라면
-        commission_pool = int(total_sales * 0.1)
-        
-        for p in partners:
-            partner_reports.append({
-                'user': p,
-                'period_sales': total_sales,
-                'commission': commission_pool # 파트너별 정교한 분배 로직이 필요할 경우 여기서 수정
-            })
-        
-    return render_template('admin/staff_mgmt.html', stores=stores, selected_slug=selected_slug, 
-                           worker_reports=worker_reports, partner_reports=partner_reports, 
+
+    return render_template('admin/staff_mgmt.html', stores=stores, selected_slug=selected_slug,
+                           worker_reports=worker_reports,
                            store=store, start_date=start_str, end_date=end_str, now=now,
                            can_edit_wage=can_edit_wage)
+
 
 @attendance_bp.route('/api/staff/<int:user_id>/update', methods=['POST'])
 @owner_only_required # 사장님 전용 권한 데코레이터 적용
@@ -427,43 +398,167 @@ def api_update_staff_wage(user_id):
 
         db.session.commit()
         return jsonify({'status': 'success'})
-        db.session.commit()
-        return jsonify({'status': 'success'})
     return jsonify({'error': 'User not found'}), 404
 
-# [신규] 급여 정산 및 송금 관리자 페이지
+# ─── 월별 급여 집계 API ───
+@attendance_bp.route('/api/<slug>/payroll/monthly')
+@login_required
+def api_monthly_payroll(slug):
+    """월별 급여 집계 API (년/월 파라미터로 조회)"""
+    if session.get('role') not in ['admin', 'owner', 'manager']:
+        return jsonify({'error': 'Forbidden'}), 403
+
+    year  = int(request.args.get('year',  datetime.utcnow().year))
+    month = int(request.args.get('month', datetime.utcnow().month))
+
+    from zoneinfo import ZoneInfo
+    store = db.session.get(Store, slug)
+    try:
+        tz = ZoneInfo(store.timezone if store and store.timezone else 'Asia/Seoul')
+    except Exception:
+        tz = ZoneInfo('Asia/Seoul')
+
+    # 해당 월 시작/끝 (현지 시간 → UTC)
+    from datetime import timezone as utc_tz
+    local_start = datetime(year, month, 1, 0, 0, 0, tzinfo=tz)
+    if month == 12:
+        local_end = datetime(year + 1, 1, 1, 0, 0, 0, tzinfo=tz) - timedelta(seconds=1)
+    else:
+        local_end = datetime(year, month + 1, 1, 0, 0, 0, tzinfo=tz) - timedelta(seconds=1)
+
+    start_utc = local_start.astimezone(utc_tz.utc).replace(tzinfo=None)
+    end_utc   = local_end.astimezone(utc_tz.utc).replace(tzinfo=None)
+
+    workers = User.query.filter_by(store_id=slug, role='worker').all()
+    result = []
+
+    for w in workers:
+        attendances = Attendance.query.filter(
+            Attendance.user_id == w.id,
+            Attendance.store_id == slug,
+            Attendance.check_in_at >= start_utc,
+            Attendance.check_in_at <= end_utc,
+            Attendance.status == 'completed'
+        ).order_by(Attendance.check_in_at).all()
+
+        total_mins = sum((a.total_minutes or 0) for a in attendances)
+        wage = int((total_mins / 60) * (w.hourly_rate or 0))
+
+        daily = []
+        for a in attendances:
+            daily.append({
+                'date':  a.check_in_at.strftime('%m-%d'),
+                'in':    a.check_in_at.strftime('%H:%M'),
+                'out':   a.check_out_at.strftime('%H:%M') if a.check_out_at else '-',
+                'mins':  a.total_minutes or 0,
+                'hours': round((a.total_minutes or 0) / 60, 2)
+            })
+
+        result.append({
+            'user_id':       w.id,
+            'full_name':     w.full_name or w.username,
+            'position':      w.position or '',
+            'phone':         w.phone or '',
+            'bank_name':     w.bank_name or '',
+            'account_no':    w.account_no or '',
+            'hourly_rate':   w.hourly_rate or 0,
+            'total_minutes': total_mins,
+            'total_hours':   round(total_mins / 60, 2),
+            'total_wage':    wage,
+            'daily_records': daily
+        })
+
+    return jsonify({
+        'year': year, 'month': month,
+        'store_name': store.name if store else slug,
+        'staff': result
+    })
+
+# ─── 급여명세서 인쇄 페이지 ───
+@attendance_bp.route('/admin/payslip/<slug>/<int:year>/<int:month>')
+@login_required
+def admin_payslip_print(slug, year, month):
+    """월별 급여명세서 인쇄 전용 페이지"""
+    if session.get('role') not in ['admin', 'owner', 'manager']:
+        return render_template('access_denied.html'), 403
+    store = db.session.get(Store, slug)
+    if not store:
+        return "매장 정보를 찾을 수 없습니다.", 404
+    return render_template('admin/payslip_print.html', store=store, year=year, month=month, slug=slug)
+
+# ─── 주민번호 암호화 저장 API ───
+@attendance_bp.route('/api/staff/<int:user_id>/id-number', methods=['POST'])
+@login_required
+def api_save_id_number(user_id):
+    """직원 주민번호 앞 7자리를 암호화하여 저장합니다. (개인정보보호법 제24조 준수)"""
+    if session.get('role') not in ['admin', 'owner']:
+        return jsonify({'error': 'Forbidden'}), 403
+
+    data = request.json
+    raw = data.get('id_number', '').replace('-', '').strip()
+
+    # 입력 검증: 6자리(생년월일) + 1자리(성별) = 7자리만 허용
+    if not raw or len(raw) < 7 or not raw[:7].isdigit():
+        return jsonify({'status': 'error', 'message': '주민번호 앞 7자리(생년월일+성별코드)를 올바르게 입력해 주세요.'}), 400
+
+    masked = raw[:7]  # 7자리만 저장
+
+    from MQutils.crypto import crypto
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    user.id_number_enc = crypto.encrypt(masked)
+    db.session.commit()
+    print(f"🔐 [ID-Enc] 직원 {user.full_name or user.username}의 주민번호 앞 7자리 암호화 저장 완료")
+    return jsonify({'status': 'success', 'masked': f"{masked[:6]}-{masked[6]}******"})
+
+# ─── 주민번호 조회 API (복호화) ───
+@attendance_bp.route('/api/staff/<int:user_id>/id-number', methods=['GET'])
+@login_required
+def api_get_id_number(user_id):
+    """암호화된 주민번호 앞 7자리를 복호화하여 마스킹된 형태로 반환합니다."""
+    if session.get('role') not in ['admin', 'owner']:
+        return jsonify({'error': 'Forbidden'}), 403
+
+    from MQutils.crypto import crypto
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    if not user.id_number_enc:
+        return jsonify({'status': 'none', 'masked': '미등록'})
+
+    plain = crypto.decrypt(user.id_number_enc)
+    masked = f"{plain[:6]}-{plain[6]}******" if plain and len(plain) >= 7 else '복호화 오류'
+    return jsonify({'status': 'ok', 'masked': masked})
+
+# ─── 급여 정산 뷰 ───
 @attendance_bp.route('/admin/payroll')
-@login_required # owner_only_required가 필요할 수 있으나 유연하게 설정
+@login_required
 def admin_payroll_view():
     user_id = session.get('user_id')
     role = session.get('role')
     store_id = session.get('store_id')
-    
+
     if role not in ['admin', 'owner', 'manager']:
         return render_template('access_denied.html'), 403
-        
+
     store = db.session.get(Store, store_id)
     if not store:
         return redirect(url_for('index'))
 
-    # 이번 달 1일부터 현재까지의 데이터
-    from datetime import datetime
     now = datetime.utcnow()
     start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-    # 매장 소속 직원들 조회
     workers = User.query.filter_by(store_id=store_id, role='worker').all()
     staff_list = []
-    
+
     for w in workers:
-        # 이번 달 총 근무 분(minutes) 합산
         total_mins = db.session.query(func.sum(Attendance.total_minutes))\
-            .filter(Attendance.user_id == w.id, Attendance.store_id == store_id, Attendance.check_in_at >= start_of_month)\
-            .scalar() or 0
-        
-        # 예상 급여
+            .filter(Attendance.user_id == w.id, Attendance.store_id == store_id,
+                    Attendance.check_in_at >= start_of_month).scalar() or 0
         wage = int((total_mins / 60) * (w.hourly_rate or 0))
-        
         staff_list.append({
             'id': w.id,
             'full_name': w.full_name or w.username,
@@ -471,5 +566,7 @@ def admin_payroll_view():
             'account_no': w.account_no,
             'current_wage': wage
         })
-        
-    return render_template('admin/payroll.html', store=store, staff_list=staff_list)
+
+    return render_template('admin/payroll.html', store=store, staff_list=staff_list,
+                           year=now.year, month=now.month)
+

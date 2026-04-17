@@ -1,123 +1,67 @@
 @echo off
-title MQnet Master Control Center
+chcp 65001 > nul
 setlocal enabledelayedexpansion
+title MQnet Control Center
 
 :MENU
 cls
-set "VENV_STATUS=INACTIVE"
-if exist ".venv\Scripts\python.exe" (
-    set "VENV_STATUS=READY (.venv)"
-)
-if defined VIRTUAL_ENV (
-    set "VENV_STATUS=ACTIVE"
-)
-
-echo ======================================================
-echo    MQnet Master Control Center [ VENV: %VENV_STATUS% ]
-echo ======================================================
-echo  1. Setup VENV (Install dependencies)
-echo  2. Github Upload (Push to cloud)
-echo  3. Docker Build and Test (Local 5001)
-echo  4. Run PC Server (Local 10000)
-echo  5. Run Tunnel (mq.chicvill.store)
-echo  6. Check SaaS Status (Check Cloud)
-echo  7. Check VENV (pip list)
-echo  8. Force Reset VENV (Danger!)
-echo  9. Sync Knowledge DB (Seed)
-echo  0. Exit
-echo ======================================================
-set /p choice="Enter Number: "
+echo.
+echo  ======================================================
+echo     MQnet Master Control Center
+echo  ======================================================
+echo   1. Setup VENV  (Install dependencies)
+echo   2. Github Upload  (Push to cloud)
+echo   3. Docker Build and Test  (Local 5001)
+echo   4. Run PC Server  (Local 10000)
+echo   0. Exit
+echo  ======================================================
+echo.
+set /p choice="  Enter Number: "
 
 if "%choice%"=="1" goto VENV_SETUP
 if "%choice%"=="2" goto GIT_PUSH
-if "%choice%"=="3" goto DOCKER_REBUILD
+if "%choice%"=="3" goto DOCKER_RUN
 if "%choice%"=="4" goto RUN_LOCAL
-if "%choice%"=="5" goto RUN_TUNNEL
-if "%choice%"=="6" goto SAAS_CHECK
-if "%choice%"=="7" goto VENV_LIST
-if "%choice%"=="8" goto VENV_RESET
-if "%choice%"=="9" goto DB_SEED
 if "%choice%"=="0" exit
 goto MENU
 
 :VENV_SETUP
-if not exist ".venv" ( python -m venv .venv )
-call ".venv\Scripts\activate"
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-echo Setup Completed.
+echo.
+echo  [VENV] Setting up virtual environment...
+if not exist ".venv" (
+    python -m venv .venv
+    echo  [VENV] Created .venv
+)
+".venv\Scripts\python.exe" -m pip install --upgrade pip -q
+".venv\Scripts\pip.exe" install -r requirements.txt
+echo  [VENV] Done.
 pause
 goto MENU
 
 :GIT_PUSH
+echo.
+echo  [GIT] Pushing to Github...
 git add .
-set /p msg="Commit Msg: "
-if "%msg%"=="" set msg="auto_update"
-git commit -m "%msg%"
-git push origin main
+git commit -m "auto: %date% %time%"
+git push
+echo  [GIT] Done.
 pause
 goto MENU
 
-:DOCKER_REBUILD
-docker rm -f mqnet-live
-docker build -t mqnet-app:latest .
-docker run -d -p 5001:5000 --env-file .env --name mqnet-live mqnet-app:latest
+:DOCKER_RUN
+echo.
+echo  [DOCKER] Building and running on port 5001...
+docker build -t mqnet .
+docker run -p 5001:10000 --env-file .env mqnet
 pause
 goto MENU
 
 :RUN_LOCAL
-if exist ".venv\Scripts\python.exe" (
-    echo [INFO] Using .venv python...
-    ".venv\Scripts\python.exe" app.py
-) else (
-    echo [ERROR] Virtual environment not found. Please run Option 1 first.
-)
-pause
-goto MENU
-
-:RUN_TUNNEL
-set "RAW_TOKEN="
-:: 1. 정확히 CLOUDFLARE_TUNNEL_TOKEN= 으로 시작하는 라인만 찾습니다.
-for /f "tokens=2 delims==" %%a in ('findstr /B "CLOUDFLARE_TUNNEL_TOKEN=" .env') do (
-    set "RAW_TOKEN=%%a"
-)
-:: 2. 값 뒤에 혹시나 있을지 모르는 공백 제거를 위해 트림 처리
-if defined RAW_TOKEN (
-    set "RAW_TOKEN=%RAW_TOKEN: =%"
-)
-
-if "%RAW_TOKEN%"=="" (
-    echo [ERROR] CLOUDFLARE_TUNNEL_TOKEN not found in .env
-    pause
-    goto MENU
-)
-echo Running Tunnel for chicvill.store...
-cloudflared.exe tunnel --protocol http2 run --token %RAW_TOKEN%
-pause
-goto MENU
-
-:SAAS_CHECK
-start https://mq.chicvill.store/api/health
-goto MENU
-
-:VENV_LIST
-if exist ".venv\Scripts\pip.exe" (
-    ".venv\Scripts\pip.exe" list
-) else (
-    echo [ERROR] Virtual environment not found.
-)
-pause
-goto MENU
-
-:VENV_RESET
-rmdir /s /q .venv 2>nul
-python -m venv .venv
-call ".venv\Scripts\activate"
-pip install -r requirements.txt
-pause
-goto MENU
-
-:DB_SEED
-start http://localhost:10000/api/internal/seed-demo
+echo.
+echo  [SERVER] Starting MQnet on http://localhost:10000
+echo  --------------------------------------------------------
+".venv\Scripts\python.exe" app.py
+echo  --------------------------------------------------------
+echo  [SERVER] Stopped. Check messages above.
 pause
 goto MENU

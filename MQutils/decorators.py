@@ -19,15 +19,6 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def staff_required(f):
-    @login_required
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # 파트너(staff)급 이상 (admin 포함)
-        if session.get('role') not in ['admin', 'staff']:
-            return render_template('access_denied.html')
-        return f(*args, **kwargs)
-    return decorated_function
 
 def manager_required(f):
     @login_required
@@ -69,15 +60,6 @@ def store_access_required(f):
         if role == 'admin':
             return f(slug, *args, **kwargs)
 
-        # 파트너(staff)는 본인 하위 매장만 접근 가능 (demo 포함)
-        from models import db, Store
-        store = db.session.get(Store, slug)
-        if role == 'staff':
-            # staff_id가 등록된 경우만 통과 (이미 추천인인 경우)
-            if store and store.recommended_by == user_id:
-                return f(slug, *args, **kwargs)
-            return render_template('access_denied.html')
-            
         # 사장님(owner)과 점장(manager)은 본인 소속 매장(slug)인지만 체크
         if role in ['owner', 'manager']:
             if session.get('store_id') != slug:

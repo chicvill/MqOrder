@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ store.name }} - {{ year }}년 {{ month }}월 급여명세서</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Noto Sans KR', sans-serif; background: #f5f5f5; color: #1a1a1a; }
+
+        .controls {
+            position: fixed; top: 20px; right: 20px; z-index: 1000;
+            display: flex; gap: 10px;
+        }
+        .ctrl-btn {
+            background: #1e40af; color: white; border: none;
+            padding: 10px 22px; border-radius: 8px; font-size: 0.9rem;
+            font-weight: 700; cursor: pointer; transition: 0.2s;
+        }
+        .ctrl-btn:hover { background: #1e3a8a; }
+        .ctrl-btn.secondary { background: #374151; }
+
+        @media print {
+            .controls { display: none !important; }
+            body { background: white; }
+        }
+
+        .payslip-wrapper {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        /* ─── 개별 명세서 카드 ─── */
+        .payslip-card {
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 30px;
+            page-break-inside: avoid;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+        }
+        .payslip-header {
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
+            color: white;
+            padding: 20px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .payslip-header .title { font-size: 1.4rem; font-weight: 900; letter-spacing: -0.5px; }
+        .payslip-header .period { font-size: 0.85rem; opacity: 0.8; margin-top: 4px; }
+        .payslip-header .store-name { font-size: 0.85rem; font-weight: 700; text-align: right; opacity: 0.9; }
+
+        .payslip-body { padding: 20px 25px; }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .info-item { }
+        .info-item .label { font-size: 0.72rem; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .info-item .value { font-size: 0.92rem; font-weight: 700; color: #1a1a1a; }
+
+        .section-title { font-size: 0.78rem; font-weight: 900; color: #374151; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+
+        /* 일별 근무 내역 테이블 */
+        .daily-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.82rem; }
+        .daily-table th { background: #f3f4f6; padding: 7px 10px; text-align: left; font-weight: 800; color: #374151; border-bottom: 2px solid #d1d5db; }
+        .daily-table td { padding: 6px 10px; border-bottom: 1px solid #f3f4f6; color: #4b5563; }
+        .daily-table tr:last-child td { border-bottom: none; }
+        .daily-table .total-row td { background: #eff6ff; font-weight: 800; color: #1e40af; border-top: 2px solid #bfdbfe; }
+
+        /* 급여 총액 박스 */
+        .wage-box {
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+            border: 2px solid #86efac;
+            border-radius: 12px;
+            padding: 18px 22px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .wage-box .label { font-size: 0.82rem; color: #15803d; font-weight: 700; }
+        .wage-box .amount { font-size: 1.6rem; font-weight: 900; color: #16a34a; letter-spacing: -1px; }
+
+        /* 송금 정보 */
+        .bank-info { margin-top: 15px; padding: 12px 16px; background: #f9fafb; border-radius: 8px; font-size: 0.82rem; color: #6b7280; display: flex; justify-content: space-between; align-items: center; }
+        .bank-info strong { color: #1a1a1a; }
+        .toss-btn { background: #ffed00; color: #1a1a1a; border: none; padding: 7px 16px; border-radius: 20px; font-size: 0.82rem; font-weight: 900; cursor: pointer; text-decoration: none; }
+        .toss-btn:hover { background: #f5e500; }
+
+        .payslip-footer { padding: 12px 25px; background: #f9fafb; border-top: 1px solid #e5e7eb; font-size: 0.72rem; color: #9ca3af; display: flex; justify-content: space-between; }
+
+        /* 빈 상태 */
+        .empty-state { text-align: center; padding: 60px 20px; color: #9ca3af; }
+        .empty-state .icon { font-size: 3rem; margin-bottom: 15px; }
+
+        /* 월 선택 UI */
+        .month-selector {
+            background: white;
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .month-selector label { font-size: 0.85rem; font-weight: 700; color: #374151; }
+        .month-selector select, .month-selector input { padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.85rem; color: #1a1a1a; }
+        .month-selector button { background: #2563eb; color: white; border: none; padding: 6px 16px; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <button class="ctrl-btn secondary" onclick="history.back()">← 돌아가기</button>
+    <button class="ctrl-btn" onclick="window.print()">🖨️ 인쇄 / PDF 저장</button>
+</div>
+
+<div class="payslip-wrapper">
+
+    <!-- 월 선택 -->
+    <div class="month-selector">
+        <label>조회 기간:</label>
+        <input type="number" id="sel-year" value="{{ year }}" min="2024" max="2030" style="width:80px;">
+        <span>년</span>
+        <select id="sel-month">
+            {% for m in range(1, 13) %}
+            <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ m }}월</option>
+            {% endfor %}
+        </select>
+        <button onclick="reloadPayslip()">조회</button>
+    </div>
+
+    <div id="payslip-container">
+        <div class="empty-state">
+            <div class="icon">⏳</div>
+            <p>급여 데이터를 불러오는 중...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+const SLUG = "{{ slug }}";
+let currentYear = {{ year }};
+let currentMonth = {{ month }};
+
+function fmt(n) { return n.toLocaleString('ko-KR') + '원'; }
+
+function reloadPayslip() {
+    currentYear  = parseInt(document.getElementById('sel-year').value);
+    currentMonth = parseInt(document.getElementById('sel-month').value);
+    loadPayroll(currentYear, currentMonth);
+}
+
+async function loadPayroll(year, month) {
+    const container = document.getElementById('payslip-container');
+    container.innerHTML = '<div class="empty-state"><div class="icon">⏳</div><p>집계 중...</p></div>';
+
+    const res = await fetch(`/api/${SLUG}/payroll/monthly?year=${year}&month=${month}`);
+    const data = await res.json();
+
+    if (!data.staff || data.staff.length === 0) {
+        container.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>${year}년 ${month}월에 근무 내역이 없습니다.</p></div>`;
+        return;
+    }
+
+    let html = '';
+    data.staff.forEach(s => {
+        if (s.total_minutes === 0) return;
+
+        let dailyRows = s.daily_records.map(d => `
+            <tr>
+                <td>${d.date}</td>
+                <td>${d.in}</td>
+                <td>${d.out}</td>
+                <td>${Math.floor(d.mins / 60)}시간 ${d.mins % 60}분</td>
+                <td>${fmt(Math.floor(d.hours * (s.hourly_rate || 0)))}</td>
+            </tr>
+        `).join('');
+
+        const bankInfo = s.bank_name && s.account_no
+            ? `<div class="bank-info">
+                    <span>송금 계좌: <strong>${s.bank_name} ${s.account_no}</strong></span>
+                    <a href="supertoss://send?bank=${s.bank_name}&account=${s.account_no}&amount=${s.total_wage}&memo=${encodeURIComponent(data.store_name + ' 급여')}"
+                       class="toss-btn">토스 송금</a>
+               </div>`
+            : `<div class="bank-info" style="color:#ef4444;"><span>⚠️ 계좌 정보가 등록되지 않았습니다.</span></div>`;
+
+        html += `
+        <div class="payslip-card">
+            <div class="payslip-header">
+                <div>
+                    <div class="title">급여명세서</div>
+                    <div class="period">${year}년 ${month}월 (${month.toString().padStart(2,'0')}/01 ~ ${month.toString().padStart(2,'0')}/${new Date(year, month, 0).getDate()})</div>
+                </div>
+                <div class="store-name">${data.store_name}</div>
+            </div>
+            <div class="payslip-body">
+                <div class="info-grid">
+                    <div class="info-item"><div class="label">성명</div><div class="value">${s.full_name}</div></div>
+                    <div class="info-item"><div class="label">직책</div><div class="value">${s.position || '직원'}</div></div>
+                    <div class="info-item"><div class="label">연락처</div><div class="value">${s.phone || '-'}</div></div>
+                    <div class="info-item"><div class="label">시급</div><div class="value">${fmt(s.hourly_rate)}</div></div>
+                    <div class="info-item"><div class="label">총 근무시간</div><div class="value">${s.total_hours}시간</div></div>
+                    <div class="info-item"><div class="label">근무일수</div><div class="value">${s.daily_records.length}일</div></div>
+                </div>
+
+                <div class="section-title" style="margin-bottom:10px;">일별 근무 내역</div>
+                <table class="daily-table">
+                    <thead>
+                        <tr><th>날짜</th><th>출근</th><th>퇴근</th><th>근무시간</th><th>일급</th></tr>
+                    </thead>
+                    <tbody>
+                        ${dailyRows}
+                        <tr class="total-row">
+                            <td colspan="3">합계</td>
+                            <td>${s.total_hours}시간</td>
+                            <td>${fmt(s.total_wage)}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="wage-box">
+                    <div>
+                        <div class="label">이번 달 지급 총액</div>
+                        <div style="font-size:0.75rem; color:#15803d; margin-top:3px;">시급 ${fmt(s.hourly_rate)} × ${s.total_hours}시간</div>
+                    </div>
+                    <div class="amount">${fmt(s.total_wage)}</div>
+                </div>
+                ${bankInfo}
+            </div>
+            <div class="payslip-footer">
+                <span>발행일: ${new Date().toLocaleDateString('ko-KR')}</span>
+                <span>MQnet 급여 관리 시스템 | ${data.store_name}</span>
+            </div>
+        </div>`;
+    });
+
+    container.innerHTML = html || `<div class="empty-state"><div class="icon">📋</div><p>${year}년 ${month}월에 근무 내역이 없습니다.</p></div>`;
+}
+
+// 페이지 로드 시 자동 조회
+loadPayroll(currentYear, currentMonth);
+</script>
+</body>
+</html>

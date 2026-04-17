@@ -1,0 +1,11 @@
+.venv
+.git
+.vscode
+__pycache__
+*.pyc
+*.pyo
+*.db
+instance/
+cloudflared.exe
+*.bat
+*.md
