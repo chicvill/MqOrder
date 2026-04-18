@@ -34,16 +34,16 @@
             z-index: 5000; border-bottom: 1px solid var(--ag-border);
         }
 
-        .ag-logo { font-family: 'Outfit'; font-size: 1.2rem; font-weight: 950; background: linear-gradient(90deg, #fff, var(--ag-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-
-        /* Categories Bar */
-        #top-cat-bar {
-            height: 60px; background: rgba(5, 10, 20, 0.5); backdrop-filter: blur(10px);
-            display: flex; align-items: center; gap: 8px; padding: 0 1rem;
-            overflow-x: auto; white-space: nowrap; scrollbar-width: none;
-            border-bottom: 1px solid var(--ag-border); z-index: 4999;
+        .ag-logo { 
+            font-family: 'Outfit'; font-size: 1.2rem; font-weight: 950; 
+            background: linear-gradient(90deg, #fff, var(--ag-cyan)); 
+            -webkit-background-clip: text; 
+            background-clip: text;
+            -webkit-text-fill-color: transparent; 
         }
-        #top-cat-bar::-webkit-scrollbar { display: none; }
+
+        /* Categories Bar (Deprecated and Removed) */
+        #top-cat-bar, #cart-window { display: none !important; }
         .cat-chip {
             padding: 8px 18px; border-radius: 100px; background: rgba(255,255,255,0.05);
             font-size: 0.9rem; font-weight: 700; color: #94a3b8; border: 1px solid transparent; transition: 0.3s;
@@ -65,13 +65,31 @@
         .bubble.bot { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--ag-border); align-self: flex-start; color: #e2e8f0; }
         .bubble.user { background: var(--ag-cyan); color: #000; align-self: flex-end; font-weight: 700; }
 
-        /* Menu Display Card */
-        #menu-board {
-            position: fixed; top: 130px; left: 1rem; right: 1rem;
-            max-height: 40vh; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(20px);
-            border-radius: 24px; border: 1px solid var(--ag-cyan); display: none;
-            overflow-y: auto; z-index: 4500; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+        /* Menu Display Card (Deprecated in Chat-First Mode, but kept for logic) */
+        #menu-board { display: none !important; }
+
+        /* Action Buttons in Bubbles */
+        .bubble-actions {
+            display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;
         }
+        .action-btn {
+            background: rgba(0, 242, 255, 0.1); border: 1px solid rgba(0, 242, 255, 0.3);
+            color: var(--ag-cyan); padding: 8px 16px; border-radius: 12px;
+            font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: 0.2s;
+        }
+        .action-btn:active { background: var(--ag-cyan); color: #000; }
+
+        /* Mini Menu Cards in Bubbles */
+        .mini-card {
+            display: flex; align-items: center; gap: 12px;
+            background: rgba(255,255,255,0.03); border: 1px solid var(--ag-border);
+            padding: 10px; border-radius: 14px; margin-bottom: 8px;
+        }
+        .mini-card img { width: 50px; height: 50px; border-radius: 8px; object-fit: cover; }
+        .mini-card .info { flex: 1; }
+        .mini-card .name { font-weight: 800; font-size: 0.9rem; }
+        .mini-card .price { color: var(--ag-cyan); font-weight: 700; font-size: 0.8rem; }
+        .mini-card .add-btn { background: var(--ag-purple); color: #fff; border: none; padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 800; }
 
         /* Voice Wave Animation (Plan L61-63) */
         .ag-mic-station {
@@ -94,10 +112,30 @@
         }
         .ag-mic-btn.listening .ag-wave-ring:nth-child(2) { animation-delay: 0.5s; }
         .ag-mic-btn.listening .ag-wave-ring:nth-child(3) { animation-delay: 1s; }
-
         @keyframes waveRipple {
             0% { transform: scale(1); opacity: 0.6; }
             100% { transform: scale(2.5); opacity: 0; }
+        }
+        @keyframes popUp { from { opacity: 0; transform: translateY(10px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+        /* Cart Summary in Bubble */
+        .cart-summary-box {
+            background: rgba(255,255,255,0.03); border: 1px solid var(--ag-border);
+            border-radius: 16px; padding: 12px; margin-top: 10px;
+        }
+        .cs-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .cs-item:last-child { border-bottom: none; }
+        .cs-info { flex: 1; }
+        .cs-name { font-weight: 700; font-size: 0.9rem; }
+        .cs-price { color: var(--ag-cyan); font-size: 0.8rem; }
+        .cs-ctrl { display: flex; align-items: center; gap: 8px; }
+        .cs-qty { font-family: 'Outfit'; font-weight: 900; font-size: 0.9rem; min-width: 20px; text-align: center; }
+        .cs-total {
+            margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--ag-cyan);
+            display: flex; justify-content: space-between; font-weight: 900; font-size: 1rem; color: var(--ag-cyan);
         }
 
         /* Bottom Control */
@@ -111,18 +149,33 @@
             flex: 1; background: rgba(255,255,255,0.05); border: 1px solid var(--ag-border);
             padding: 1rem 1.5rem; border-radius: 100px; color: #fff; font-size: 1rem; outline: none;
         }
+
+        .voice-toggle {
+            position: fixed; bottom: 85px; right: 20px; z-index: 9000;
+            width: 44px; height: 44px; border-radius: 50%;
+            background: rgba(255,255,255,0.1); backdrop-filter: blur(10px);
+            border: 1px solid var(--ag-border); color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: 0.3s; font-size: 1rem;
+        }
+        .voice-toggle.active { background: var(--ag-cyan); color: #000; }
+
+        /* Cart Window (Removed for Redundancy) */
     </style>
 </head>
 <body class="antigravity-mode">
     <header>
         <div class="ag-logo">{{ store.name }}</div>
-        <div style="display:flex; gap:12px;">
+        <div style="display:flex; gap:12px; align-items:center;">
             <button onclick="toggleService('호출')" style="background:transparent; border:1px solid var(--ag-cyan); color:var(--ag-cyan); padding:6px 14px; border-radius:100px; font-weight:800; font-size:0.8rem;">직원호출</button>
-            <i class="fas fa-volume-up" style="color:var(--ag-cyan); font-size:1.2rem; cursor:pointer;"></i>
+            <div onclick="toggleCart()" style="position:relative; cursor:pointer; font-size:1.4rem; color:var(--ag-cyan);">
+                <i class="fas fa-shopping-cart"></i>
+                <div id="cart-badge" style="position:absolute; top:-8px; right:-10px; background:var(--ag-purple); color:#fff; font-size:0.7rem; padding:2px 6px; border-radius:100px; font-weight:900; display:none;">0</div>
+            </div>
         </div>
     </header>
 
-    <div id="top-cat-bar"></div>
+    <div id="top-cat-bar" style="display:none !important;"></div>
     <div id="chat-window"></div>
     <div id="menu-board"></div>
 
@@ -137,17 +190,67 @@
         <div id="live-caption" style="display:none; transform:translateY(-100px); background:#000; padding:8px 16px; border-radius:100px; color:var(--ag-cyan); font-size:0.85rem; font-weight:800; border:1px solid var(--ag-cyan);">듣고 있어요...</div>
     </div>
 
-    <div class="bottom-nav">
-        <input type="text" id="chat-input" class="msg-input" placeholder="주문을 말씀하시거나 메뉴를 터치하세요" onkeypress="if(event.key==='Enter') userSend()">
-        <button onclick="userSend()" style="color:var(--ag-cyan); font-size:1.4rem; border:none; background:none;"><i class="fas fa-paper-plane"></i></button>
+    <div class="voice-toggle" id="tts-toggle" onclick="toggleTTS()">
+        <i class="fas fa-volume-mute"></i>
+    </div>
+
+    <script id="store-data-payload" type="application/json">
+        {
+            "storeId": "{{ store.id }}",
+            "tableId": "{{ table_id|default(0) }}",
+            "menuData": {{ store.menu_data | tojson | safe if store.menu_data else '{}' }}
+        }
+    </script>
+
+    <div class="bottom-nav" style="justify-content: center; gap: 30px;">
+        <button onclick="showCategoryGuide()" style="width:60px; height:60px; border-radius:50%; background:rgba(255,255,255,0.05); border:1px solid var(--ag-border); color:#fff; font-size:1.5rem; flex-shrink:0;">
+            <i class="fas fa-th-large"></i>
+        </button>
+        <div style="width:70px;"></div> <!-- Mic spacing -->
+        <button onclick="showCartSummary()" style="width:60px; height:60px; border-radius:50%; background:rgba(255,255,255,0.05); border:1px solid var(--ag-border); color:var(--ag-cyan); font-size:1.5rem; flex-shrink:0; position:relative;">
+            <i class="fas fa-shopping-cart"></i>
+            <div id="btm-cart-badge" style="position:absolute; top:-2px; right:-2px; background:var(--ag-purple); color:#fff; font-size:0.75rem; padding:2px 7px; border-radius:100px; font-weight:900; display:none;">0</div>
+        </button>
     </div>
 
     <script>
         const socket = io();
-        const menuData = {{ store.menu_data | tojson | safe }};
-        const storeId = '{{ store.id }}';
+        const rawPayload = document.getElementById('store-data-payload').textContent;
+        const payload = JSON.parse(rawPayload);
+        
+        const storeId = payload.storeId;
+        const menuData = payload.menuData;
+        let tableId = payload.tableId;
+
+        // URL 우선 순위 (QR 스캔 감지)
+        if(!tableId || tableId === '0' || tableId === 'None') {
+            const pathParts = window.location.pathname.split('/');
+            const lastPart = pathParts[pathParts.length - 1];
+            if(!isNaN(parseInt(lastPart))) tableId = lastPart;
+        }
+
         let cart = {};
         let rec;
+
+        let ttsEnabled = false;
+        function toggleTTS() {
+            ttsEnabled = !ttsEnabled;
+            const btn = document.getElementById('tts-toggle');
+            btn.classList.toggle('active', ttsEnabled);
+            btn.innerHTML = ttsEnabled ? '<i class="fas fa-volume-up"></i>' : '<i class="fas fa-volume-mute"></i>';
+            if(ttsEnabled) speak("음성 안내를 시작합니다. 말씀만 하세요!");
+        }
+
+        function speak(text) {
+            if(!ttsEnabled) return;
+            const cleanText = text.replace(/<[^>]*>?/gm, ''); // HTML 태그 제거
+            const msg = new SpeechSynthesisUtterance();
+            msg.text = cleanText;
+            msg.lang = 'ko-KR';
+            msg.rate = 1.1;
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(msg);
+        }
 
         function toggleVoice() {
             const btn = document.getElementById('mic-btn');
@@ -155,7 +258,10 @@
             if(btn.classList.contains('listening')) { if(rec) rec.stop(); return; }
 
             const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if(!SR) return;
+            if(!SR) {
+                addMsg("죄송합니다. 현재 브라우저 환경에서 음성 인식을 지원하지 않습니다. (HTTPS 연결 및 크롬 브라우저를 권장합니다.) 하단 버튼을 터치하여 계속 진행해 주세요.", 'bot');
+                return;
+            }
             rec = new SR(); rec.lang = 'ko-KR'; rec.interimResults = true;
             
             rec.onstart = () => { btn.classList.add('listening'); cap.style.display = 'block'; };
@@ -165,8 +271,7 @@
                 let interim = "";
                 for (let i = e.resultIndex; i < e.results.length; ++i) {
                     if (e.results[i].isFinal) {
-                        document.getElementById('chat-input').value = e.results[i][0].transcript;
-                        userSend();
+                        userSend(e.results[i][0].transcript);
                     } else {
                         interim += e.results[i][0].transcript;
                     }
@@ -176,11 +281,10 @@
             rec.start();
         }
 
-        function userSend() {
-            const input = document.getElementById('chat-input');
-            const msg = input.value.trim(); if(!msg) return;
+        function userSend(overrideMsg) {
+            const msg = overrideMsg ? overrideMsg.trim() : ""; 
+            if(!msg) return;
             addMsg(msg, 'user');
-            input.value = '';
             
             fetch(`/api/${storeId}/chat-order`, {
                 method: 'POST',
@@ -188,34 +292,401 @@
                 body: JSON.stringify({ message: msg, cart: cart })
             }).then(r=>r.json()).then(data => {
                 addMsg(data.reply, 'bot');
+                
+                // AI 응답에서 action(행동 지침)이 있을 경우 즉각 UI와 데이터에 반영
+                if(data.action && data.action.type !== 'none') {
+                    if(data.action.type === 'add_item') {
+                        updateCartFromBubble(data.action.name, data.action.quantity || 1);
+                    } else if(data.action.type === 'remove_item') {
+                        updateCartFromBubble(data.action.name, -(data.action.quantity || 1));
+                    } else if(data.action.type === 'clear_cart') {
+                        cart = {}; // 장바구니 완전히 비우기
+                        renderCart();
+                        syncAllMiniCards();
+                        setTimeout(() => showCategoryGuide(), 800);
+                    } else if(data.action.type === 'show_category') {
+                        setTimeout(() => {
+                            if(menuData[data.action.name]) renderChatMenu(data.action.name);
+                            else showCategoryGuide();
+                        }, 800);
+                    } else if(data.action.type === 'go_to_payment') {
+                        setTimeout(() => {
+                            if(data.action.method && data.action.method !== 'none') {
+                                startTossPay(data.action.method);
+                            } else {
+                                startPayment(); 
+                            }
+                        }, 1000); 
+                    }
+                }
+            }).catch(err => {
+                addMsg("서버와 통신 중 오류가 발생했습니다.", 'bot');
             });
         }
 
-        function addMsg(txt, role) {
+        function addMsg(txt, role, type = 'text', data = null) {
+            if (role === 'bot') speak(txt);
+            const container = document.getElementById('chat-window');
             const div = document.createElement('div');
             div.className = `bubble ${role}`;
-            div.innerText = txt;
-            document.getElementById('chat-window').appendChild(div);
-            document.getElementById('chat-window').scrollTop = document.getElementById('chat-window').scrollHeight;
+            
+            const txtDiv = document.createElement('div');
+            txtDiv.innerText = txt;
+            div.appendChild(txtDiv);
+
+            if(type === 'categories') {
+                const actions = document.createElement('div');
+                actions.className = 'bubble-actions';
+                Object.keys(menuData).forEach(cat => {
+                    const btn = document.createElement('div');
+                    btn.className = 'action-btn';
+                    btn.innerText = cat;
+                    btn.onclick = () => {
+                        addMsg(cat, 'user');
+                        renderChatMenu(cat);
+                    };
+                    actions.appendChild(btn);
+                });
+                div.appendChild(actions);
+            }
+
+            if(type === 'menu-list' && data) {
+                const list = document.createElement('div');
+                list.style.marginTop = '12px';
+                data.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'mini-card';
+                    card.dataset.itemName = item.name;
+                    renderMiniCardContent(card, item);
+                    list.appendChild(card);
+                });
+                div.appendChild(list);
+
+                const foot = document.createElement('div');
+                foot.className = 'bubble-actions';
+                
+                const backBtn = document.createElement('div');
+                backBtn.className = 'action-btn';
+                backBtn.innerHTML = '<i class="fas fa-undo"></i> 다른 카테고리';
+                backBtn.onclick = () => showCategoryGuide();
+                
+                const payBtn = document.createElement('div');
+                payBtn.className = 'action-btn';
+                payBtn.style.borderColor = 'var(--ag-purple)';
+                payBtn.style.color = 'var(--ag-purple)';
+                payBtn.innerHTML = '<i class="fas fa-credit-card"></i> 주문내역 확인';
+                payBtn.onclick = () => showCartSummary();
+
+                foot.appendChild(backBtn);
+                foot.appendChild(payBtn);
+                div.appendChild(foot);
+            }
+            if(type === 'cart-summary') {
+                const box = document.createElement('div');
+                box.className = 'cart-summary-box';
+                let total = 0;
+                
+                Object.entries(cart).forEach(([name, qty]) => {
+                    let price = 0;
+                    Object.values(menuData).forEach(items => {
+                        const it = items.find(i => i.name === name);
+                        if(it) price = it.price || 0;
+                    });
+                    total += price * qty;
+
+                    const row = document.createElement('div');
+                    row.className = 'cs-item';
+                    row.innerHTML = `
+                        <div class="cs-info">
+                            <div class="cs-name">${name}</div>
+                            <div class="cs-price">${(price).toLocaleString()}원</div>
+                        </div>
+                        <div class="cs-ctrl">
+                            <i class="fas fa-minus-circle" onclick="updateCartFromChat('${name}', -1, this)" style="color:#f87171; cursor:pointer;"></i>
+                            <span class="cs-qty">${qty}</span>
+                            <i class="fas fa-plus-circle" onclick="updateCartFromChat('${name}', 1, this)" style="color:var(--ag-cyan); cursor:pointer;"></i>
+                        </div>
+                    `;
+                    box.appendChild(row);
+                });
+
+                const totalDiv = document.createElement('div');
+                totalDiv.className = 'cs-total';
+                totalDiv.innerHTML = `<span>총 결제금액</span><span>${total.toLocaleString()}원</span>`;
+                box.appendChild(totalDiv);
+                div.appendChild(box);
+
+                const actions = document.createElement('div');
+                actions.className = 'bubble-actions';
+                const finalBtn = document.createElement('div');
+                finalBtn.className = 'action-btn';
+                finalBtn.style.background = 'var(--ag-cyan)';
+                finalBtn.style.color = '#000';
+                finalBtn.style.width = '100%';
+                finalBtn.style.textAlign = 'center';
+                finalBtn.innerHTML = '결제하기';
+                finalBtn.onclick = () => startPayment();
+                
+                const continueBtn = document.createElement('div');
+                continueBtn.className = 'action-btn';
+                continueBtn.style.width = '100%';
+                continueBtn.style.textAlign = 'center';
+                continueBtn.style.marginTop = '8px';
+                continueBtn.innerHTML = '<i class="fas fa-plus"></i> 메뉴 추가하기 (카테고리)';
+                continueBtn.onclick = () => showCategoryGuide();
+
+                actions.appendChild(finalBtn);
+                actions.appendChild(continueBtn);
+                div.appendChild(actions);
+            }
+
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function renderMiniCardContent(card, item) {
+            card.innerHTML = `
+                <img src="${item.image || 'https://via.placeholder.com/100'}" alt="${item.name}">
+                <div class="info">
+                    <div class="name">${item.name}</div>
+                    <div class="price">${(item.price||0).toLocaleString()}원</div>
+                </div>
+                <button class="add-btn" onclick="updateCartFromBubble('${item.name}', 1)">담기</button>
+            `;
+        }
+
+        function updateCartFromBubble(name, delta) {
+            cart[name] = (cart[name] || 0) + delta;
+            if(cart[name] <= 0) delete cart[name];
+            syncAllMiniCards();
+            renderCart(); 
+            showCartSummary(true); 
+        }
+
+        function syncAllMiniCards() {
+            document.querySelectorAll('.mini-card').forEach(card => {
+                const name = card.dataset.itemName;
+                if(!name) return;
+                let found = null;
+                Object.values(menuData).forEach(items => {
+                    const it = items.find(i => i.name === name);
+                    if(it) found = it;
+                });
+                if(found) renderMiniCardContent(card, found);
+            });
+        }
+
+        function updateCartFromChat(name, delta, el) {
+            updateCartFromBubble(name, delta);
+        }
+
+        function showCartSummary(autoPush = false) {
+            if(Object.keys(cart).length === 0) {
+                if(!autoPush) addMsg("장바구니가 비어있습니다. 메뉴를 먼저 골라주세요!", 'bot');
+                return;
+            }
+            
+            // AI 코멘트 가져오기 시도 (비동기)
+            fetch(`/api/${storeId}/order-commentary`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ cart: cart })
+            }).then(r=>r.json()).then(data => {
+                const msg = data.comment || "현재 담으신 주문 내역입니다.";
+                addMsg(msg, 'bot', 'cart-summary');
+            }).catch(() => {
+                addMsg("주문 내역이 업데이트되었습니다.", 'bot', 'cart-summary');
+            });
+        }
+
+        function showCategoryGuide() {
+            addMsg("어느 카테고리를 보여드릴까요? 아래 버튼을 선택해 주세요.", 'bot', 'categories');
+        }
+
+        function renderChatMenu(category) {
+            const items = menuData[category] || [];
+            addMsg(`선택하신 ${category} 메뉴입니다. 원하시는 메뉴를 담아주세요.`, 'bot', 'menu-list', items);
+        }
+
+        function addToCartByName(name) {
+            let found = null;
+            Object.values(menuData).forEach(items => {
+                const it = items.find(i => i.name === name);
+                if(it) found = it;
+            });
+            if(found) addToCart(found);
         }
 
         // Initialize Categories
         const catBar = document.getElementById('top-cat-bar');
-        Object.keys(menuData).forEach((cat, idx) => {
-            const chip = document.createElement('div');
-            chip.className = 'cat-chip';
-            chip.innerText = cat;
-            if(idx===0) chip.classList.add('active');
-            chip.onclick = () => {
-                document.querySelectorAll('.cat-chip').forEach(c=>c.classList.remove('active'));
-                chip.classList.add('active');
-                // Show Menu logic here
-            };
-            catBar.appendChild(chip);
-        });
+        const menuBoard = document.getElementById('menu-board');
+
+        function renderMenu(category) {
+            const items = menuData[category] || [];
+            menuBoard.innerHTML = '';
+            menuBoard.style.display = 'block';
+
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.style.display = 'flex';
+                card.style.alignItems = 'center';
+                card.style.padding = '1rem';
+                card.style.borderBottom = '1px solid var(--ag-border)';
+                card.onclick = () => addToCart(item);
+
+                const info = document.createElement('div');
+                info.style.flex = '1';
+                info.innerHTML = `
+                    <div style="font-weight:800; font-size:1.05rem;">${item.name}</div>
+                    <div style="font-size:0.8rem; color:#94a3b8; margin:2px 0 6px;">${item.description || ''}</div>
+                    <div style="color:var(--ag-cyan); font-weight:900;">${(item.price || 0).toLocaleString()}원</div>
+                `;
+                
+                const img = document.createElement('div');
+                img.style.width = '70px';
+                img.style.height = '70px';
+                img.style.borderRadius = '12px';
+                img.style.background = '#1e293b';
+                img.style.backgroundImage = item.image ? `url(${item.image})` : 'none';
+                img.style.backgroundSize = 'cover';
+
+                card.appendChild(info);
+                card.appendChild(img);
+                menuBoard.appendChild(card);
+            });
+        }
+
+        function toggleMenuBoard() {
+            menuBoard.style.display = (menuBoard.style.display === 'block' ? 'none' : 'block');
+        }
+
+        function toggleCart() {
+            showCartSummary();
+        }
+
+        function renderCart() {
+            let count = 0;
+            Object.values(cart).forEach(q => count += q);
+            const badge = document.getElementById('cart-badge');
+            const btmBadge = document.getElementById('btm-cart-badge');
+            if(badge) {
+                badge.innerText = count;
+                badge.style.display = (count > 0 ? 'block' : 'none');
+            }
+            if(btmBadge) {
+                btmBadge.innerText = count;
+                btmBadge.style.display = (count > 0 ? 'block' : 'none');
+            }
+        }
+
+        function updateCart(name, delta) {
+            cart[name] = (cart[name] || 0) + delta;
+            if(cart[name] <= 0) delete cart[name];
+            renderCart();
+        }
+
+        function addToCart(item) {
+            updateCartFromBubble(item.name, 1);
+        }
+
+        function startPayment() {
+            if(Object.keys(cart).length === 0) {
+                addMsg("주문할 메뉴가 없습니다.", 'bot');
+                return;
+            }
+
+            // 결제 수단 선택 메시지
+            addMsg("원하시는 결제 수단을 선택해 주세요.", 'bot');
+            
+            const btnBox = document.createElement('div');
+            btnBox.id = "payment-method-selector";
+            btnBox.className = 'bubble-actions';
+            btnBox.innerHTML = `
+                <div class="action-btn" onclick="startTossPay('카드')">💳 신용카드</div>
+                <div class="action-btn" onclick="startTossPay('가상계좌')">🏦 계좌이체</div>
+                <div class="action-btn" onclick="startTossPay('휴대폰')">📱 휴대폰결제</div>
+                <div class="action-btn" onclick="cancelPayment()" style="background:#334155; color:#94a3b8; border-color:#334155;">❌ 결제 취소</div>
+            `;
+            document.getElementById('chat-window').appendChild(btnBox);
+            document.getElementById('chat-window').scrollTop = document.getElementById('chat-window').scrollHeight;
+        }
+
+        function cancelPayment() {
+            const selector = document.getElementById('payment-method-selector');
+            if (selector) selector.remove();
+            
+            if (Object.keys(cart).length > 0) {
+                addMsg("결제가 취소되어 이전 화면으로 돌아갑니다. 아래 주문 내역을 확인해 주세요.", 'bot');
+                setTimeout(() => showCartSummary(true), 600);
+            } else {
+                addMsg("결제가 취소되었습니다. 현재 장바구니가 비어있으므로 주문을 다시 시작합니다.", 'bot');
+                setTimeout(() => showCategoryGuide(), 600);
+            }
+        }
+
+        function startTossPay(method) {
+            const selector = document.getElementById('payment-method-selector');
+            if (selector) selector.remove();
+
+            let totalPrice = 0;
+            Object.entries(cart).forEach(([name, qty]) => {
+                let price = 0;
+                Object.values(menuData).forEach(items => {
+                    const it = items.find(i => i.name === name);
+                    if(it) price = it.price || 0;
+                });
+                totalPrice += price * qty;
+            });
+            
+            if(totalPrice <= 0) return;
+
+            addMsg(`${method} 결제를 진행합니다...`, 'bot');
+
+            // 1. 주문 먼저 데이터베이스에 'pending' 생성 
+            fetch(`/api/${storeId}/create-order`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ cart: cart, table_id: tableId, payment_method: method })
+            })
+            .then(res => res.json())
+            .then(orderData => {
+                if(orderData.status !== 'success') throw new Error();
+                
+                // 2. 실제 토스페이먼츠 호출 (테스트 키)
+                const clientKey = 'test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq';
+                const tossPayments = TossPayments(clientKey);
+                
+                // 결제 성공을 위한 콜백 URL (현재는 가상 승인 처리 엔드포인트 활용 후 영수증 리다이렉트)
+                const currentUrl = new URL(window.location.href);
+                const baseUrl = currentUrl.protocol + "//" + currentUrl.host;
+                
+                // Toss 결제창 오픈
+                tossPayments.requestPayment(method, {
+                    amount: totalPrice,
+                    orderId: orderData.order_id,
+                    orderName: Object.keys(cart)[0] + (Object.keys(cart).length > 1 ? ` 외 ${Object.keys(cart).length - 1}건` : ''),
+                    customerName: '테스트고객_' + tableId,
+                    customerEmail: 'guest@mqnet.com', // 영수증 이메일 입력창 표시 방지용 기본값
+                    successUrl: `${baseUrl}/api/${storeId}/mock-pay?orderId=${orderData.order_id}&redirect=true`,
+                    failUrl: `${baseUrl}/${storeId}/customer`
+                }).catch(function (error) {
+                    if (error.code === 'USER_CANCEL') {
+                        cancelPayment();
+                    } else {
+                        addMsg("결제 중 오류가 발생했습니다: " + error.message, 'bot');
+                    }
+                });
+            })
+            .catch(() => {
+                addMsg("주문 처리 중 서버 통신 오류가 발생했습니다. 다시 시도해 주세요.", 'bot');
+            });
+        }
 
         // Intro message
-        setTimeout(() => addMsg("안녕하세요! {{ store.name }}의 AI 바리스타입니다. 무엇을 도와드릴까요?", 'bot'), 500);
+        setTimeout(() => {
+            addMsg("안녕하세요! {{ store.name }}의 AI 주문 도우미입니다. 편리하게 주문하실 수 있도록 안내해 드릴게요.", 'bot');
+            setTimeout(showCategoryGuide, 800);
+        }, 500);
     </script>
 </body>
 </html>

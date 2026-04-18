@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>고급 설정 - {{ store.name }}</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="nav-body">
+<div class="app-shell">
+    <div class="page-header" style="display:flex; align-items:center; gap:1rem; padding: 1.2rem;">
+        <a href="/admin/stores/{{ store.id }}/config" style="color:var(--text); font-size:1.2rem;"><i class="fa-solid fa-arrow-left"></i></a>
+        <h1 style="font-size:1.4rem; font-weight:800;">고급 기능 설정</h1>
+    </div>
+
+    <form method="POST" style="padding: 1.2rem;">
+        <div class="section-header">
+            <span class="section-title">운영 최적화</span>
+        </div>
+
+        <div class="form-group mb-1" style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-card); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border);">
+            <div>
+                <div style="font-size:0.95rem; font-weight:700;">자동 로그아웃 방지</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">카운터/주방 기기에서 유용합니다.</div>
+            </div>
+            <input type="checkbox" name="disable_auto_logout" style="width:24px; height:24px;" {% if store.disable_auto_logout %}checked{% endif %}>
+        </div>
+
+        <div class="form-group mb-1">
+            <label class="form-label">웨이팅 알림 번호</label>
+            <input type="text" name="waiting_sms_no" class="form-control" value="{{ store.waiting_sms_no or '' }}" placeholder="SMS 발신 번호">
+        </div>
+
+        <div class="form-group mb-1">
+            <label class="form-label">포인트 적립률 (%)</label>
+            <input type="number" step="0.1" name="point_ratio" class="form-control" value="{{ store.point_ratio or 0 }}">
+        </div>
+
+        {% if session['role'] == 'admin' %}
+        <div class="section-header mt-2">
+            <span class="section-title" style="color:var(--danger);">관리자 전용 설정</span>
+        </div>
+        <div class="form-group mb-1">
+            <label class="form-label">월 구독료 (원)</label>
+            <input type="number" name="monthly_fee" class="form-control" value="{{ store.monthly_fee or 50000 }}">
+        </div>
+        <div class="form-group mb-1" style="display:flex; align-items:center; justify-content:space-between; background:rgba(239,68,68,0.05); padding:1rem; border-radius:var(--radius-md); border:1px solid rgba(239,68,68,0.2);">
+            <div style="font-size:0.95rem; font-weight:700;">공개 샘플 매장 여부</div>
+            <input type="checkbox" name="is_public" style="width:24px; height:24px;" {% if store.is_public %}checked{% endif %}>
+        </div>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary w-100 mt-2" style="padding:1rem;">설정 저장</button>
+    </form>
+</div>
+</body>
+</html>

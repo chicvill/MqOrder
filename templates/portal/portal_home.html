@@ -3,161 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>MQnet — 포털</title>
+    <title>MQnet 홈</title>
     <link rel="stylesheet" href="/static/css/base.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* ── 상단 사용자 카드 ── */
-        .user-hero {
-            background: linear-gradient(135deg, rgba(0,242,255,0.07), rgba(59,130,246,0.07));
-            border-bottom: 1px solid var(--border);
-            padding: 1.8rem 1.5rem 1.5rem;
-        }
-        .user-hero-top {
+        /* ── 홈 전용 스타일 ── */
+        .revenue-banner {
+            background: var(--accent);
+            margin: 0.8rem 1.2rem;
+            border-radius: var(--radius-lg);
+            padding: 1.2rem 1.4rem;
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 1rem;
         }
-        .user-avatar {
-            width: 54px;
-            height: 54px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--accent), var(--accent-blue));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: var(--font-display);
-            font-size: 1.4rem;
+        .revenue-banner .rb-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            opacity: 0.85;
+            margin-bottom: 4px;
+        }
+        .revenue-banner .rb-amount {
+            font-size: 1.6rem;
             font-weight: 800;
-            color: #000;
-            flex-shrink: 0;
+            letter-spacing: -1px;
         }
-        .user-meta { flex: 1; padding-left: 1rem; }
-        .user-meta .name {
-            font-size: 1.1rem;
-            font-weight: 700;
+        .revenue-banner .rb-right {
+            text-align: right;
         }
-        .user-meta .sub {
-            font-size: 0.82rem;
-            color: var(--text-dim);
-            margin-top: 2px;
+        .revenue-banner .rb-count {
+            font-size: 1.3rem;
+            font-weight: 800;
         }
-        .logout-btn {
-            border: 1px solid var(--border);
-            background: transparent;
+        .store-name-bar {
+            padding: 1rem 1.2rem 0.2rem;
+            font-size: 0.78rem;
             color: var(--text-muted);
-            padding: 0.4rem 0.8rem;
-            border-radius: var(--radius-sm);
-            font-size: 0.8rem;
-            cursor: pointer;
-            text-decoration: none;
+            font-weight: 600;
             display: flex;
             align-items: center;
-            gap: 0.4rem;
-            transition: color 0.2s;
+            gap: 6px;
         }
-        .logout-btn:hover { color: var(--danger); border-color: rgba(255,92,92,0.4); }
 
-        /* ── 만기 알림 바 ── */
-        .expiry-bar {
+        /* 진행 중인 주문 미니카드 */
+        .order-mini {
             display: flex;
             align-items: center;
             gap: 0.8rem;
-            padding: 0.7rem 1rem;
+            padding: 0.8rem 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            text-decoration: none;
+            color: var(--text);
+            -webkit-tap-highlight-color: transparent;
+        }
+        .order-mini:last-child { border-bottom: none; }
+        .order-mini:active { background: rgba(255,255,255,0.03); }
+
+        .order-mini .om-num {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: #2a2a2a;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+        .order-mini .om-info { flex: 1; }
+        .order-mini .om-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+        .order-mini .om-detail {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 1px;
+        }
+        .order-mini .om-price {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .order-mini .om-time {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+            text-align: right;
+        }
+
+        /* 상태 뱃지 */
+        .status-pill {
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 100px;
+        }
+        .sp-cooking  { background: rgba(249,115,22,0.15); color: #f97316; }
+        .sp-serving  { background: rgba(59,130,246,0.15);  color: #60a5fa; }
+        .sp-serve-ok { background: rgba(34,197,94,0.15);   color: #4ade80; }
+        .sp-new      { background: rgba(239,68,68,0.15);   color: #f87171; }
+
+        /* 최상단 사용자 헤더 */
+        .home-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.2rem 0.5rem;
+        }
+        .home-header .store-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .home-header .logo-text {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--text);
+        }
+        .home-header .time-badge {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+        .home-header .icon-btns {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .icon-btn {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        /* 프로필 섹션 */
+        .user-strip {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0.5rem 1.2rem 0.8rem;
+        }
+        .user-avatar {
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            background: var(--accent);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800;
+            font-size: 1rem;
+            flex-shrink: 0;
+            color: #fff;
+        }
+        .user-info .u-name { font-size: 0.95rem; font-weight: 700; }
+        .user-info .u-role { font-size: 0.75rem; color: var(--text-muted); }
+
+        /* 만기 알림 */
+        .expiry-bar {
+            margin: 0 1.2rem 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            padding: 0.65rem 1rem;
             border-radius: var(--radius-sm);
             font-size: 0.82rem;
             font-weight: 600;
             text-decoration: none;
-            margin-top: 0.8rem;
         }
         .expiry-bar.trial   { background: rgba(249,115,22,0.1); color: #fb923c; border: 1px solid rgba(249,115,22,0.3); }
         .expiry-bar.warning { background: rgba(234,179,8,0.1);  color: #fbbf24; border: 1px solid rgba(234,179,8,0.3); }
-        .expiry-bar.expired { background: rgba(255,92,92,0.1);  color: var(--danger); border: 1px solid rgba(255,92,92,0.35); }
+        .expiry-bar.expired { background: rgba(239,68,68,0.1);  color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
 
-        /* ── 빠른 실행 버튼 그리드 ── */
-        .quick-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.8rem;
-            padding: 1.2rem 1.5rem;
-        }
-        .quick-btn {
-            background: var(--bg-glass);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 1.2rem 1rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.6rem;
-            text-decoration: none;
-            color: var(--text);
-            transition: background 0.2s, transform 0.2s, border-color 0.2s;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .quick-btn:active { transform: scale(0.97); }
-        .quick-btn:hover {
-            background: rgba(255,255,255,0.07);
-            border-color: var(--border-accent);
-        }
-        .quick-btn .q-icon {
-            width: 44px; height: 44px;
-            border-radius: 14px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.3rem;
-        }
-        .quick-btn .q-label {
-            font-size: 0.82rem;
-            font-weight: 600;
-            text-align: center;
-            color: var(--text-dim);
-        }
-        .q-icon.cyan   { background: rgba(0,242,255,0.1); color: var(--accent); }
-        .q-icon.blue   { background: rgba(59,130,246,0.1); color: #60a5fa; }
-        .q-icon.purple { background: rgba(168,85,247,0.1); color: #c084fc; }
-        .q-icon.orange { background: rgba(249,115,22,0.1); color: #fb923c; }
-        .q-icon.green  { background: rgba(34,211,165,0.1); color: var(--success); }
-        .q-icon.red    { background: rgba(255,92,92,0.1);  color: var(--danger); }
-
-        /* ── 섹션: 메뉴 리스트 ── */
-        .menu-section {
-            padding: 0 1.5rem 1rem;
-        }
-        .menu-list {
-            background: var(--bg-glass);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            overflow: hidden;
-        }
-        .menu-row {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 1rem 1.2rem;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            text-decoration: none;
-            color: var(--text);
-            transition: background 0.15s;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .menu-row:last-child { border-bottom: none; }
-        .menu-row:active { background: rgba(255,255,255,0.05); }
-        .menu-row .m-icon {
-            width: 38px; height: 38px;
-            border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1rem;
-            flex-shrink: 0;
-        }
-        .menu-row .m-text { flex: 1; }
-        .menu-row .m-title { font-size: 0.9rem; font-weight: 600; }
-        .menu-row .m-sub   { font-size: 0.75rem; color: var(--text-muted); margin-top: 1px; }
-        .menu-row .m-arrow { color: var(--text-muted); font-size: 0.8rem; }
-
-        /* ── 스토어 목록 (Admin용) ── */
+        /* 스토어 목록 (Admin) */
         .store-chip {
-            background: var(--bg-glass);
+            background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: var(--radius-md);
             padding: 0.8rem 1rem;
@@ -166,145 +186,214 @@
             align-items: center;
             gap: 0.8rem;
         }
-        .store-chip .s-dot {
-            width: 8px; height: 8px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-        .store-chip .s-dot.active  { background: var(--success); }
-        .store-chip .s-dot.expired { background: var(--danger); }
-        .store-chip .s-dot.trial   { background: #f97316; }
-
-        footer {
-            padding: 2rem 1.5rem;
-            text-align: center;
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            border-top: 1px solid rgba(255,255,255,0.04);
-            margin-top: 1rem;
-        }
     </style>
 </head>
 <body>
-<div class="app-shell">
+{% from 'macros/bottom_nav.html' import bottom_nav %}
 
-    <!-- Header -->
-    <header class="app-header">
-        <div style="display:flex; align-items:center; gap:12px;">
-            <span class="app-logo">MQnet</span>
-            <a href="/help" style="color:var(--text-muted); font-size:0.8rem; text-decoration:none; display:flex; align-items:center; gap:4px; background:rgba(255,255,255,0.05); padding:4px 10px; border-radius:30px;">
-                <i class="fa-solid fa-circle-question"></i> 도움말
-            </a>
-        </div>
-        <a href="/logout" class="logout-btn">
-            <i class="fa-solid fa-right-from-bracket"></i> 로그아웃
-        </a>
-    </header>
+{% set sid = none %}
+{% for cat in menu_tree %}{% if cat.store %}{% set sid = cat.store.id %}{% endif %}{% endfor %}
 
-    <!-- Flash Messages -->
+<div class="app-shell nav-body">
+
+    <!-- Flash -->
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% for cat, msg in messages %}
-    <div style="padding: 0 1.5rem; margin-top: 1rem;">
-        <div class="flash-msg flash-{{ 'error' if cat == 'error' else 'success' }}">
-            <i class="fa-solid fa-{{ 'circle-xmark' if cat == 'error' else 'circle-check' }}"></i>
-            {{ msg }}
-        </div>
+    <div class="flash-msg flash-{{ 'error' if cat == 'error' else 'success' }}">
+        <i class="fa-solid fa-{{ 'circle-xmark' if cat == 'error' else 'circle-check' }}"></i>
+        {{ msg }}
     </div>
     {% endfor %}
     {% endwith %}
 
-    <!-- 사용자 히어로 -->
-    <div class="user-hero">
-        <div class="user-hero-top">
-            <div style="display:flex; align-items:center;">
-                <div class="user-avatar">{{ (user.full_name or user.username)[0] | upper }}</div>
-                <div class="user-meta">
-                    <div class="name">{{ user.full_name or user.username }}님</div>
-                    <div class="sub">
-                        {% if user.role == 'admin' %}🛡️ 최고 관리자
-                        {% elif user.role == 'owner' %}🏪 점주
-                        {% elif user.role == 'partner' %}🤝 파트너
-                        {% else %}👷 직원{% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {# 점주용 구독 만기 알림 #}
-        {% if user.role == 'owner' %}
-            {% set store_obj = namespace(value=none) %}
-            {% for cat in menu_tree %}{% if cat.store %}{% set store_obj.value = cat.store %}{% endif %}{% endfor %}
-            {% if store_obj.value and store_obj.value.expires_at %}
-                {% set delta_days = ((store_obj.value.expires_at - now) / timedelta(days=1)) | int %}
-                {% if delta_days <= 0 %}
-                <a href="/billing" class="expiry-bar expired">
-                    <i class="fa-solid fa-circle-xmark"></i>
-                    구독이 만료되었습니다 — 지금 결제하기 <i class="fa-solid fa-chevron-right" style="margin-left:auto;"></i>
-                </a>
-                {% elif delta_days <= 3 %}
-                <a href="/billing" class="expiry-bar warning">
-                    <i class="fa-solid fa-triangle-exclamation"></i>
-                    D-{{ delta_days }} 구독 만료 임박 — 갱신하기 <i class="fa-solid fa-chevron-right" style="margin-left:auto;"></i>
-                </a>
-                {% elif store_obj.value.payment_status == 'trial' %}
-                <a href="/billing" class="expiry-bar trial">
-                    <i class="fa-solid fa-hourglass-half"></i>
-                    무료 체험 D-{{ delta_days }} 남음 — 구독 전환하기 <i class="fa-solid fa-chevron-right" style="margin-left:auto;"></i>
-                </a>
+    <!-- 최상단 헤더 -->
+    <div class="home-header">
+        <div class="store-badge">
+            <span class="logo-text">
+                {% if user.role == 'owner' %}
+                    {% for cat in menu_tree %}{% if cat.store %}{{ cat.store.name }}{% endif %}{% endfor %}
+                {% elif user.role == 'admin' %}
+                    🛡️ MQnet 관리자
+                {% else %}
+                    MQnet
                 {% endif %}
-            {% endif %}
-        {% endif %}
+            </span>
+        </div>
+        <div class="icon-btns">
+            <a href="/help" class="icon-btn" title="도움말">
+                <i class="fa-solid fa-circle-question"></i>
+            </a>
+            <a href="/logout" class="icon-btn" title="로그아웃" style="color: var(--danger); border-color: rgba(239,68,68,0.25);">
+                <i class="fa-solid fa-right-from-bracket"></i>
+            </a>
+        </div>
     </div>
 
-    <!-- ══ 역할별 콘텐츠 ══ -->
+    <!-- 사용자 정보 -->
+    <div class="user-strip">
+        <div class="user-avatar">{{ (user.full_name or user.username)[0] | upper }}</div>
+        <div class="user-info">
+            <div class="u-name">{{ user.full_name or user.username }}님</div>
+            <div class="u-role">
+                {% if user.role == 'admin' %}최고 관리자
+                {% elif user.role == 'owner' %}점주
+                {% else %}직원{% endif %}
+                &nbsp;·&nbsp; {{ now.strftime('%H:%M') }}
+            </div>
+        </div>
+    </div>
 
-    {# ── 점주(owner) ── #}
+    <!-- ══ 점주 (Owner) 홈 ══ -->
     {% if user.role == 'owner' %}
     {% for category in menu_tree %}
     {% if category.store %}
-        <div style="padding: 1.2rem 1.5rem 0.5rem;">
-            <span class="section-label"><i class="fa-solid fa-store" style="margin-right:5px;"></i>{{ category.store.name }}</span>
+    {% set store = category.store %}
+
+    <!-- 만기 알림 -->
+    {% if store.expires_at %}
+        {% set delta_days = ((store.expires_at - now) / timedelta(days=1)) | int %}
+        {% if delta_days <= 0 %}
+        <a href="/billing" class="expiry-bar expired">
+            <i class="fa-solid fa-circle-xmark"></i>
+            구독이 만료되었습니다 — 지금 결제하기
+            <i class="fa-solid fa-chevron-right" style="margin-left:auto;"></i>
+        </a>
+        {% elif delta_days <= 3 %}
+        <a href="/billing" class="expiry-bar warning">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            D-{{ delta_days }} 구독 만료 임박 — 갱신하기
+            <i class="fa-solid fa-chevron-right" style="margin-left:auto;"></i>
+        </a>
+        {% elif store.payment_status == 'trial' %}
+        <a href="/billing" class="expiry-bar trial">
+            <i class="fa-solid fa-hourglass-half"></i>
+            무료 체험 D-{{ delta_days }} 남음 — 구독 전환하기
+            <i class="fa-solid fa-chevron-right" style="margin-left:auto;"></i>
+        </a>
+        {% endif %}
+    {% endif %}
+
+    <!-- 오늘 매출 배너 -->
+    <div class="revenue-banner">
+        <div>
+            <div class="rb-label">오늘 매출</div>
+            <div class="rb-amount" id="today-revenue">집계 중...</div>
         </div>
-        <div class="quick-grid">
-            {% for item in category.children %}
-            <a href="{{ item.url }}" class="quick-btn">
-                <div class="q-icon {{ item.icon_class }}"><i class="fa-solid {{ item.icon }}"></i></div>
-                <span class="q-label">{{ item.name }}</span>
-            </a>
-            {% endfor %}
+        <div class="rb-right">
+            <div class="rb-label">주문 건수</div>
+            <div class="rb-count" id="today-orders">— 건</div>
         </div>
-    {% else %}
-        <div class="menu-section" style="margin-top:0.5rem;">
-            <div class="menu-list">
-            {% for item in category.children %}
-            <a href="{{ item.url }}" class="menu-row">
-                <div class="m-icon {{ item.icon_class or 'cyan' }}" style="background:rgba(0,242,255,0.08);">
-                    <i class="fa-solid {{ item.icon or 'fa-link' }}" style="color:var(--accent);"></i>
-                </div>
+    </div>
+
+    <!-- 실시간 상태 칩 -->
+    <div class="status-chips">
+        <div class="status-chip">
+            <div class="chip-icon">⏳</div>
+            <div class="chip-count" id="chip-waiting">0</div>
+            <div class="chip-label">대기 중</div>
+        </div>
+        <div class="status-chip">
+            <div class="chip-icon" style="color:#f97316;">🔥</div>
+            <div class="chip-count" id="chip-cooking">0</div>
+            <div class="chip-label">조리 중</div>
+        </div>
+        <div class="status-chip">
+            <div class="chip-icon" style="color:#f87171;">🔔</div>
+            <div class="chip-count" id="chip-new">0</div>
+            <div class="chip-label">신규 주문</div>
+        </div>
+    </div>
+
+    <!-- 진행 중인 주문 -->
+    <div class="section-header">
+        <span class="section-title">진행 중인 주문</span>
+        <a href="/{{ store.id }}/counter" class="section-link">전체 보기</a>
+    </div>
+    <div class="menu-section" style="padding-top:0;">
+        <div class="menu-list" id="live-orders-list">
+            <div style="padding:1.5rem; text-align:center; color:var(--text-muted); font-size:0.85rem;">
+                <i class="fa-solid fa-spinner fa-spin"></i> 주문 불러오는 중...
+            </div>
+        </div>
+    </div>
+
+    <!-- 빠른 메뉴 (2×2 + 아래 2개) -->
+    <div class="section-header">
+        <span class="section-title">빠른 메뉴</span>
+    </div>
+    <div class="quick-grid">
+        <a href="/{{ store.id }}/menu" class="quick-btn">
+            <div class="q-icon orange"><i class="fa-solid fa-utensils"></i></div>
+            <span class="q-label">메뉴 관리</span>
+        </a>
+        <a href="/admin/staff?slug={{ store.id }}" class="quick-btn">
+            <div class="q-icon blue"><i class="fa-solid fa-user-group"></i></div>
+            <span class="q-label">직원 관리</span>
+        </a>
+        <a href="/{{ store.id }}/qr-print" class="quick-btn">
+            <div class="q-icon green"><i class="fa-solid fa-qrcode"></i></div>
+            <span class="q-label">QR 코드</span>
+        </a>
+        <a href="/{{ store.id }}/stats" class="quick-btn">
+            <div class="q-icon purple"><i class="fa-solid fa-chart-bar"></i></div>
+            <span class="q-label">통계</span>
+        </a>
+    </div>
+
+    <!-- 더 많은 메뉴 (리스트 형) -->
+    <div class="menu-section">
+        <div class="menu-list">
+            <a href="/{{ store.id }}/counter" class="menu-row">
+                <div class="m-icon q-icon orange"><i class="fa-solid fa-desktop"></i></div>
                 <div class="m-text">
-                    <div class="m-title">{{ item.name }}</div>
+                    <div class="m-title">카운터</div>
+                    <div class="m-sub">실시간 주문 접수 · 처리</div>
                 </div>
                 <i class="fa-solid fa-chevron-right m-arrow"></i>
             </a>
-            {% endfor %}
-            </div>
+            <a href="/{{ store.id }}/kitchen" class="menu-row">
+                <div class="m-icon q-icon orange"><i class="fa-solid fa-fire-burner"></i></div>
+                <div class="m-text">
+                    <div class="m-title">주방</div>
+                    <div class="m-sub">주방 디스플레이</div>
+                </div>
+                <i class="fa-solid fa-chevron-right m-arrow"></i>
+            </a>
+            <a href="/{{ store.id }}/display" class="menu-row">
+                <div class="m-icon q-icon blue"><i class="fa-solid fa-tv"></i></div>
+                <div class="m-text">
+                    <div class="m-title">전광판</div>
+                    <div class="m-sub">대기번호 고객 디스플레이</div>
+                </div>
+                <i class="fa-solid fa-chevron-right m-arrow"></i>
+            </a>
+            <a href="/{{ store.id }}/customer/1" class="menu-row">
+                <div class="m-icon q-icon gray"><i class="fa-solid fa-mobile-screen"></i></div>
+                <div class="m-text">
+                    <div class="m-title">주문 (테스트)</div>
+                    <div class="m-sub">고객 주문 화면 미리보기</div>
+                </div>
+                <i class="fa-solid fa-chevron-right m-arrow"></i>
+            </a>
         </div>
+    </div>
+
     {% endif %}
     {% endfor %}
 
-    {# ── 관리자(admin) ── #}
+    <!-- ══ 관리자 (Admin) ══ -->
     {% elif user.role == 'admin' %}
     <div class="quick-grid">
         <a href="/admin/stores-billing" class="quick-btn">
-            <div class="q-icon cyan"><i class="fa-solid fa-gauge-high"></i></div>
+            <div class="q-icon orange"><i class="fa-solid fa-gauge-high"></i></div>
             <span class="q-label">구독 현황</span>
         </a>
         <a href="/admin/users/pending" class="quick-btn">
-            <div class="q-icon orange"><i class="fa-solid fa-user-check"></i></div>
+            <div class="q-icon blue"><i class="fa-solid fa-user-check"></i></div>
             <span class="q-label">가입 승인</span>
         </a>
         <a href="/admin/stores" class="quick-btn">
-            <div class="q-icon blue"><i class="fa-solid fa-store"></i></div>
+            <div class="q-icon green"><i class="fa-solid fa-store"></i></div>
             <span class="q-label">전체 매장</span>
         </a>
         <a href="/admin/settings" class="quick-btn">
@@ -312,44 +401,130 @@
             <span class="q-label">시스템 설정</span>
         </a>
         <a href="/knowledge" class="quick-btn">
-            <div class="q-icon green"><i class="fa-solid fa-brain"></i></div>
+            <div class="q-icon gray"><i class="fa-solid fa-brain"></i></div>
             <span class="q-label">지식 창고</span>
         </a>
         <a href="/api/health" target="_blank" class="quick-btn">
-            <div class="q-icon red"><i class="fa-solid fa-heartbeat"></i></div>
+            <div class="q-icon red"><i class="fa-solid fa-heart-pulse"></i></div>
             <span class="q-label">서버 상태</span>
         </a>
     </div>
 
-    {# ── 파트너(partner) ── #}
-    {% elif user.role == 'partner' %}
-    <div class="quick-grid">
-        {% for item in menu_tree[0].children if menu_tree %}
-        <a href="{{ item.url }}" class="quick-btn">
-            <div class="q-icon cyan"><i class="fa-solid fa-store"></i></div>
-            <span class="q-label">{{ item.name }}</span>
-        </a>
-        {% endfor %}
-    </div>
-
-    {# ── 직원(staff) ── #}
+    <!-- ══ 직원 (Staff) ══ -->
     {% else %}
-    <div class="menu-section" style="margin-top:1.2rem;">
+    <div class="menu-section" style="margin-top:1rem;">
         <div class="menu-list">
-        {% for category in menu_tree %}
-        {% for item in category.children %}
-        <a href="{{ item.url }}" class="menu-row">
-            <div class="m-icon q-icon cyan"><i class="fa-solid fa-link"></i></div>
-            <div class="m-text"><div class="m-title">{{ item.name }}</div></div>
-            <i class="fa-solid fa-chevron-right m-arrow"></i>
-        </a>
-        {% endfor %}
-        {% endfor %}
+            <a href="/attendance" class="menu-row">
+                <div class="m-icon q-icon orange"><i class="fa-solid fa-clock"></i></div>
+                <div class="m-text"><div class="m-title">출퇴근 관리</div></div>
+                <i class="fa-solid fa-chevron-right m-arrow"></i>
+            </a>
+            <a href="/counter" class="menu-row">
+                <div class="m-icon q-icon blue"><i class="fa-solid fa-clipboard-list"></i></div>
+                <div class="m-text"><div class="m-title">주문 확인</div></div>
+                <i class="fa-solid fa-chevron-right m-arrow"></i>
+            </a>
         </div>
     </div>
     {% endif %}
 
-    <footer>&copy; 2026 MQnet by MQ Networks Inc.</footer>
+    <footer style="padding:1.5rem; text-align:center; font-size:0.72rem; color:var(--text-muted); margin-top:0.5rem;">
+        © 2026 MQnet by MQ Networks Inc.
+    </footer>
 </div>
+
+<!-- 바텀 네비 -->
+{{ bottom_nav(active='home', store_id=sid) }}
+
+<!-- 음성 FAB (점주만 표시) -->
+{% if user.role == 'owner' and sid %}
+<button class="fab" onclick="alert('음성 명령 기능 준비 중')" title="음성 명령">
+    <i class="fa-solid fa-microphone"></i>
+</button>
+{% endif %}
+
+<!-- 포털 데이터 컨테이너 (JS 린트 에러 방지용) -->
+<div id="portal-meta" style="display:none;" 
+     data-role="{{ user.role }}" 
+     data-sid="{{ sid|default('') }}"></div>
+
+<script>
+(function() {
+    const meta = document.getElementById('portal-meta');
+    const userRole = meta.getAttribute('data-role');
+    const STORE_ID = meta.getAttribute('data-sid');
+
+    if (userRole === 'owner' && STORE_ID) {
+        // 오늘 매출 + 상태 데이터 로드
+        async function loadHomeStats() {
+            try {
+                const res = await fetch(`/api/${STORE_ID}/home-stats`);
+                if (!res.ok) throw new Error('API 없음');
+                const d = await res.json();
+
+                document.getElementById('today-revenue').textContent =
+                    (d.today_revenue || 0).toLocaleString() + '원';
+                document.getElementById('today-orders').textContent =
+                    (d.today_orders || 0) + '건';
+                document.getElementById('chip-waiting').textContent = d.waiting || 0;
+                document.getElementById('chip-cooking').textContent = d.cooking || 0;
+                document.getElementById('chip-new').textContent     = d.new_orders || 0;
+            } catch {
+                document.getElementById('today-revenue').textContent = '—';
+                document.getElementById('today-orders').textContent  = '— 건';
+            }
+        }
+
+        // 진행 중인 주문 로드
+        async function loadLiveOrders() {
+            const el = document.getElementById('live-orders-list');
+            try {
+                const res = await fetch(`/api/${STORE_ID}/live-orders`);
+                if (!res.ok) throw new Error('API 없음');
+                const orders = await res.json();
+
+                if (!orders.length) {
+                    el.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:0.85rem;"><i class="fa-solid fa-check-circle" style="color:#22c55e;margin-right:6px;"></i>진행 중인 주문이 없습니다</div>';
+                    return;
+                }
+
+                const statusMap = {
+                    'new':     { label: '신규', cls: 'sp-new' },
+                    'cooking': { label: '조리 중', cls: 'sp-cooking' },
+                    'serving': { label: '서빙 대기', cls: 'sp-serving' },
+                    'served':  { label: '서빙 완료', cls: 'sp-serve-ok' },
+                };
+
+                el.innerHTML = orders.slice(0, 4).map(o => {
+                    const s = statusMap[o.status] || { label: o.status, cls: '' };
+                    const items = (o.items || []).slice(0, 2).map(i => i.name).join(', ');
+                    const more  = (o.items || []).length > 2 ? ` 외 ${o.items.length - 2}` : '';
+                    return `
+                    <a href="/${STORE_ID}/counter" class="order-mini">
+                        <div class="om-num">${o.table_id || '?'}</div>
+                        <div class="om-info">
+                            <div class="om-title">${o.table_id}번 테이블
+                                <span class="status-pill ${s.cls}" style="margin-left:6px;">${s.label}</span>
+                            </div>
+                            <div class="om-detail">${items}${more}</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div class="om-price">${(o.total_price||0).toLocaleString()}원</div>
+                            <div class="om-time">${o.elapsed || ''}</div>
+                        </div>
+                    </a>`;
+                }).join('');
+            } catch {
+                el.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--text-muted);font-size:0.85rem;">주문 정보를 불러올 수 없습니다</div>';
+            }
+        }
+
+        loadHomeStats();
+        loadLiveOrders();
+        // 30초마다 갱신
+        setInterval(() => { loadHomeStats(); loadLiveOrders(); }, 30000);
+    }
+})();
+</script>
 </body>
 </html>

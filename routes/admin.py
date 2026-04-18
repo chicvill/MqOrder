@@ -106,66 +106,68 @@ def init_admin_routes(app):
             
         return redirect(url_for('admin_stores'))
 
-    @app.route('/admin/stores/<slug>/config', methods=['GET', 'POST'])
+    @app.route('/admin/stores/<slug>/config', methods=['GET'])
     @store_access_required
     def admin_store_config(slug):
+        """[Redesigned Content] Settings Hub"""
         store = db.session.get(Store, slug)
-        user_id = session.get('user_id')
-        role = session.get('role')
-        user_store_id = session.get('store_id')
+        return render_template('admin/store_config.html', store=store)
 
-        # 보안 체크
-        can_access = False
-        if role == 'admin':
-            can_access = True
-        elif role in ['owner', 'manager'] and slug == user_store_id:
-            can_access = True
-            
-        if not can_access:
-            flash("해당 업소에 대한 관리 권한이 없습니다.")
-            return redirect(url_for('index'))
-        
+    @app.route('/admin/stores/<slug>/info', methods=['GET', 'POST'])
+    @store_access_required
+    def admin_store_info(slug):
+        """매장 기본 정보 설정 상세"""
+        store = db.session.get(Store, slug)
         if request.method == 'POST':
-            # 매장 기본 정보 업데이트
             store.name = request.form.get('name')
             store.business_no = request.form.get('business_no')
             store.ceo_name = request.form.get('ceo_name')
             store.business_email = request.form.get('business_email')
-            store.business_type = request.form.get('business_type')  # [추가] 업종 저장
-            store.theme_color = request.form.get('theme_color', store.theme_color)
-            store.contact_phone = request.form.get('contact_phone', store.contact_phone)
-            store.point_ratio = float(request.form.get('point_ratio', 0))
-            store.waiting_sms_no = request.form.get('waiting_sms_no', store.waiting_sms_no)
-            store.disable_auto_logout = 'disable_auto_logout' in request.form
-
-            # [신규] 계좌 정보 저장
+            store.business_type = request.form.get('business_type')
+            store.contact_phone = request.form.get('contact_phone')
             store.bank_name = request.form.get('bank_name')
             store.account_no = request.form.get('account_no')
             store.account_holder = request.form.get('account_holder')
+            db.session.commit()
+            flash("매장 정보가 저장되었습니다.")
+            return redirect(url_for('admin_store_config', slug=slug))
+        return render_template('admin/store_info.html', store=store)
+
+    @app.route('/admin/stores/<slug>/advanced', methods=['GET', 'POST'])
+    @store_access_required
+    def admin_store_advanced(slug):
+        """고급 기능 및 맞춤 설정 상세"""
+        store = db.session.get(Store, slug)
+        if request.method == 'POST':
+            store.theme_color = request.form.get('theme_color', store.theme_color)
+            store.point_ratio = float(request.form.get('point_ratio', 0))
+            store.waiting_sms_no = request.form.get('waiting_sms_no', store.waiting_sms_no)
+            store.disable_auto_logout = 'disable_auto_logout' in request.form
             
-            if role == 'admin':
+            if session.get('role') == 'admin':
                 store.monthly_fee = int(request.form.get('monthly_fee', 50000))
                 store.is_public = 'is_public' in request.form
-            
-            # 메뉴 데이터 저장 (JSON 포맷)
+                
+            db.session.commit()
+            flash("고급 설정이 저장되었습니다.")
+            return redirect(url_for('admin_store_config', slug=slug))
+        return render_template('admin/store_advanced.html', store=store)
+
+    @app.route('/<slug>/menu', methods=['GET', 'POST'])
+    @store_access_required
+    def admin_store_menu(slug):
+        """메뉴 빌더 (기존 config의 메뉴 편집 기능)"""
+        store = db.session.get(Store, slug)
+        if request.method == 'POST':
             raw_menu = request.form.get('menu_data', '{}')
             try:
                 import json
                 store.menu_data = json.loads(raw_menu)
-                print(f"DEBUG: [{store.id}] 메뉴판 데이터 저장 시도 -> {len(store.menu_data)} 카테고리 감지")
-            except Exception as e:
-                print(f"ERROR: [{store.id}] 메뉴 JSON 파싱 실패: {e}")
-                
-            db.session.commit()
-            flash(f"매장 '{store.name}'의 모든 설정이 안전하게 저장되었습니다.")
-            
-            # 점주는 메인으로, 관리/직원은 목록으로 리다이렉트
-            if role in ['owner', 'manager']:
-                return redirect(url_for('index'))
-            return redirect(url_for('admin_stores'))
-
-        staffs = User.query.filter(User.role.in_(['admin', 'owner'])).all()
-        return render_template('admin/store_config.html', store=store, staffs=staffs, role=role)
+                db.session.commit()
+                flash("메뉴 구성이 저장되었습니다.")
+            except: flash("저장 중 오류가 발생했습니다.")
+            return redirect(url_for('admin_store_config', slug=slug))
+        return render_template('admin/store_menu.html', store=store)
 
     @app.route('/admin/performance')
     @login_required

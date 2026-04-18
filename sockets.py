@@ -3,7 +3,9 @@ import random
 from datetime import datetime, timedelta
 from MQutils.payment import auto_issue_cash_receipt
 from flask_socketio import join_room
-from models import db, Order, OrderItem, Customer, PointTransaction, Store
+from models import db, Order, OrderItem, Customer, PointTransaction, Store, User, Attendance
+from sqlalchemy import func
+from flask import session, request
 
 def register_socketio_events(socketio):
     @socketio.on('join')

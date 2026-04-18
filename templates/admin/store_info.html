@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>매장 정보 - {{ store.name }}</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="nav-body">
+<div class="app-shell">
+    <div class="page-header" style="display:flex; align-items:center; gap:1rem; padding: 1.2rem;">
+        <a href="/admin/stores/{{ store.id }}/config" style="color:var(--text); font-size:1.2rem;"><i class="fa-solid fa-arrow-left"></i></a>
+        <h1 style="font-size:1.4rem; font-weight:800;">매장 기본 정보</h1>
+    </div>
+
+    <form method="POST" style="padding: 1.2rem;">
+        <div class="form-group mb-1">
+            <label class="form-label">매장명</label>
+            <input type="text" name="name" class="form-control" value="{{ store.name }}" required>
+        </div>
+
+        <div class="form-group mb-1">
+            <label class="form-label">사업자 등록 번호</label>
+            <input type="text" name="business_no" class="form-control" value="{{ store.business_no or '' }}" placeholder="000-00-00000">
+        </div>
+
+        <div class="form-group mb-1">
+            <label class="form-label">업종</label>
+            <input type="text" name="business_type" class="form-control" value="{{ store.business_type or '' }}" placeholder="예: 카페, 한식 등">
+        </div>
+
+        <div class="form-group mb-1">
+            <label class="form-label">대표자 성함</label>
+            <input type="text" name="ceo_name" class="form-control" value="{{ store.ceo_name or '' }}">
+        </div>
+
+        <div class="form-group mb-1">
+            <label class="form-label">연락처 (매장 번호)</label>
+            <input type="text" name="contact_phone" class="form-control" value="{{ store.contact_phone or '' }}">
+        </div>
+
+        <div class="section-header mt-2">
+            <span class="section-title">정산 계좌 정보</span>
+        </div>
+
+        <div class="form-group mb-1">
+            <label class="form-label">은행명</label>
+            <input type="text" name="bank_name" class="form-control" value="{{ store.bank_name or '' }}">
+        </div>
+
+        <div class="form-group mb-1">
+            <label class="form-label">계좌번호</label>
+            <input type="text" name="account_no" class="form-control" value="{{ store.account_no or '' }}">
+        </div>
+
+        <div class="form-group mb-1">
+            <label class="form-label">예금주</label>
+            <input type="text" name="account_holder" class="form-control" value="{{ store.account_holder or '' }}">
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 mt-2" style="padding:1rem;">저장하기</button>
+    </form>
+</div>
+</body>
+</html>

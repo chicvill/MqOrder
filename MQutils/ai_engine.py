@@ -146,15 +146,16 @@ def handle_chat_order(store_name, menu_data, user_message, cart, history=None, o
 
     [핵심 규칙]
     1. 당신은 장바구니 추가(add_item), **삭제(remove_item)**, 비우기(clear_cart) 능력이 완벽히 있습니다. 절대 "수정을 지원하지 않는다"는 거짓말을 하지 마세요.
-    2. 수량 조절: 사용자가 "하나 빼줘", "취소해줘"라고 하면 반드시 `remove_item` 액션을 사용하세요.
-    3. 오타 교정: 현재 화면에 열려있는 카테고리{visible_info} 내의 메뉴를 최우선으로 매칭하세요.
-    4. 결제 요청: "결제", "계산" 의사 확인 시 'go_to_payment' 액션을 포함하세요.
-    5. 'action'의 'name'은 반드시 [메뉴판]에 적힌 메뉴판 원문 이름이어야 합니다.
+    2. 카테고리 요청: 고객이 "음료 메뉴 보여줘", "세트 메뉴 뭐뭐 있어?" 처럼 특정 분류를 원하면 'show_category' 액션을 사용하세요.
+    3. 수량 조절: 사용자가 "하나 빼줘", "취소해줘"라고 하면 반드시 `remove_item` 액션을 사용하세요.
+    4. 오타 교정: 현재 화면에 열려있는 카테고리{visible_info} 내의 메뉴를 최우선으로 매칭하세요.
+    5. 결제 요청(중요): 사용자가 "결제할게", "계산" 등 결제 의사를 보이면 **무조건 'go_to_payment' 액션**을 내보내야 합니다. 사용자가 "신용카드"처럼 수단을 지정했다면 'method'에 '카드', '휴대폰', '가상계좌' 중 하나를 채우고, 아직 수단을 지정하지 않았다면 'method'에 'none'을 담아 보내세요(시스템이 버튼을 생성할 수 있도록).
+    6. 'action'의 'name'은 반드시 [메뉴판]에 적힌 메뉴판 원문 이름이거나 카테고리 이름이어야 합니다.
 
     [메뉴판]: {menu_json}
     [현재 손님 장바구니]: {current_cart} {visible_info}
 
-    응답 JSON: {{"reply": "...", "action": {{"type": "add_item" | "remove_item" | "go_to_payment" | "none", "name": "...", "quantity": 1}}}}
+    응답 JSON: {{"reply": "...", "action": {{"type": "add_item" | "remove_item" | "clear_cart" | "go_to_payment" | "show_category" | "none", "name": "...", "quantity": 1, "method": "카드|가상계좌|휴대폰|none"}}}}
     """
 
     messages = [{"role": "system", "content": system_prompt}]
@@ -387,3 +388,23 @@ def generate_store_insight(store_name, sales_data=None):
     # 실제 AI 분석 로직 (Simulator)
     summary = f"현재 {store_name}은(는) 전주 대비 약 12% 성장세를 보이고 있습니다. 주말 저녁 시간대 메뉴 추천 기능을 강화하면 추가 수익 창출이 기대됩니다."
     return summary
+
+def generate_order_comment(store_name, cart):
+    """주문 내역을 바탕으로 AI가 한줄 평이나 추천 멘트를 생성합니다."""
+    if not cart: return "어떤 메뉴를 골라볼까요? 맛있는 메뉴가 정말 많아요!"
+    
+    api_key = os.getenv("OPENAI_API_KEY")
+    client = OpenAI(api_key=api_key, http_client=httpx.Client(trust_env=False))
+    
+    items_str = ", ".join([f"{name} {qty}개" for name, qty in cart.items()])
+    prompt = f"당신은 '{store_name}'의 친절한 AI 점장입니다. 고객이 현재 장바구니에 [{items_str}]를 담았습니다. 이 메뉴 구성에 대해 칭찬이나 식탁 에티켓, 혹은 어울리는 조합을 곁들인 20자 이내의 아주 짧은 한줄 평을 해주세요. 말투는 정중하고 부드럽게 부탁드려요."
+    
+    try:
+        res = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=100
+        )
+        return res.choices[0].message.content.strip()
+    except:
+        return "탁월한 선택이십니다! 정성을 다해 준비하겠습니다."

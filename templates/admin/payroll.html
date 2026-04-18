@@ -77,7 +77,10 @@
                     {% if staff.bank_name and staff.account_no and staff.current_wage > 0 %}
                         <a href="#" 
                            class="send-btn"
-                           onclick="openToss('{{ staff.bank_name }}', '{{ staff.account_no }}', {{ staff.current_wage }})">
+                           data-bank="{{ staff.bank_name|default('은행') }}"
+                           data-account="{{ staff.account_no|default('') }}"
+                           data-wage="{{ staff.current_wage|default(0) }}"
+                           onclick="handleTossClick(this)">
                             <i class="fa-solid fa-paper-plane"></i> 토스 송금
                         </a>
                     {% else %}
@@ -106,6 +109,13 @@
         '농협': '011', '기업': '003', '카카오': '090', '토스': '092',
         '케이': '089', '제주': '035', '부산': '032', '수협': '007'
     };
+
+    function handleTossClick(el) {
+        const bank = el.getAttribute('data-bank');
+        const account = el.getAttribute('data-account');
+        const wage = el.getAttribute('data-wage');
+        openToss(bank, account, wage);
+    }
 
     function openToss(bankName, account, amount) {
         let bankCode = '';

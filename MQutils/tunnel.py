@@ -24,7 +24,7 @@ def start_cloudflare_tunnel(base_dir: str, is_render: bool) -> None:
         import time
 
         cf_exe = os.path.join(base_dir, "cloudflared.exe") if sys.platform == "win32" else "cloudflared"
-        protocol = "http2" if is_render else "quic"
+        protocol = "http2" # 윈도우/로컬 네트워크에서의 잦은 끊김(QUIC 에러)을 방지하기 위해 http2 고정
         print(f"🔗 [Step 2/2] 도메인 터널(Cloudflare) 연결 중... (Protocol: {protocol})")
 
         cmd = [cf_exe, "tunnel", "run", "--token", token, "--protocol", protocol]

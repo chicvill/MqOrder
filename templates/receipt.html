@@ -132,6 +132,16 @@
             .print-btn, body { background: white; padding: 0; }
             .receipt-container { box-shadow: none; border: 1px solid #eee; }
         }
+
+        /* 린트 방지용 캐시 영수증 스타일 */
+        .cash-receipt-box { margin-top: 20px; padding: 15px; border-radius: 12px; font-size: 0.85rem; border: 1px solid #eee; }
+        .cash-receipt-box.paid { background: #f0fff4; border-color: #c6f6d5; }
+        .cash-receipt-box.pending { background: #f0f7ff; border-color: #cce3ff; }
+        .receipt-status { font-weight: 800; margin-bottom: 5px; }
+        .cash-receipt-box.paid .receipt-status { color: #22543d; }
+        .cash-receipt-box.pending .receipt-status { color: #1e40af; }
+        .receipt-details { color: #64748b; }
+        .approval-info { margin-top:5px; padding-top:5px; border-top:1px dashed #c6f6d5; color:#22543d; font-size:0.75rem; }
     </style>
 </head>
 <body>
@@ -185,15 +195,15 @@
             </div>
 
             {% if order.cash_receipt_type %}
-            <div style="margin-top: 20px; padding: 15px; background: {{ '#f0fff4' if order.status == 'paid' else '#f0f7ff' }}; border-radius: 12px; font-size: 0.85rem; border: 1px solid {{ '#c6f6d5' if order.status == 'paid' else '#cce3ff' }};">
-                <div style="color: {{ '#22543d' if order.status == 'paid' else '#1e40af' }}; font-weight: 800; margin-bottom: 5px;">
+            <div class="cash-receipt-box {{ 'paid' if order.status == 'paid' else 'pending' }}">
+                <div class="receipt-status">
                     {{ '✅ 현금영수증 발급 완료' if order.status == 'paid' else '⏳ 현금영수증 발급 요청됨' }}
                 </div>
-                <div style="color: #64748b;">
+                <div class="receipt-details">
                     종류: {{ '개인 소득공제' if order.cash_receipt_type == 'personal' else '사업자 지출증빙' }}<br>
                     번호: {{ order.cash_receipt_number }}
                     {% if order.status == 'paid' %}
-                        <div style="margin-top:5px; padding-top:5px; border-top:1px dashed #c6f6d5; color:#22543d; font-size:0.75rem;">
+                        <div class="approval-info">
                             (국세청 승인번호: {{ (order.depositor_name.split('승인:')[1]|replace(')', '')) if '승인:' in (order.depositor_name or '') else '처리 중' }})
                         </div>
                     {% endif %}

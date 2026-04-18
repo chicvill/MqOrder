@@ -11,7 +11,7 @@ class SolapiMessenger(metaclass=Singleton):
         load_dotenv()
         self.api_key = api_key or os.getenv('SOLAPI_API_KEY')
         self.api_secret = api_secret or os.getenv('SOLAPI_API_SECRET')
-        self.sender_no = sender_no or os.getenv('SENDER_NUMBER')
+        self.sender_no = sender_no or os.getenv('SOLAPI_SENDER')
         self.pfid = os.getenv('SOLAPI_PFID', 'KA01PF240416000000') # 카카오 비즈니스 채널 ID
         self.base_url = "https://api.solapi.com/messages/v4/send-many/detail"
         

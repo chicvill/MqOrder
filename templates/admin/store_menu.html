@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>메뉴 관리 - {{ store.name }}</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .menu-builder-header { padding: 1.2rem; display: flex; align-items: center; justify-content: space-between; position:sticky; top:0; background:var(--bg-card); z-index:100; border-bottom:1px solid var(--border); }
+        .m-container { padding: 1.2rem; }
+
+        .m-category {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            margin-bottom: 2rem;
+            padding: 1.2rem;
+        }
+        .m-cat-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+        .m-cat-title { background: transparent; border: none; font-size: 1.1rem; font-weight: 800; color: var(--accent); width: 60%; }
+        
+        .m-row {
+            display: grid;
+            grid-template-columns: 2fr 1.2fr 40px;
+            gap: 0.8rem;
+            margin-bottom: 0.8rem;
+            align-items: center;
+        }
+        .m-row input { padding: 0.6rem; font-size: 0.9rem; }
+        
+        .m-img-row { grid-column: span 3; display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1rem; padding-bottom: 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.03); }
+        .m-img-preview { width: 50px; height: 50px; border-radius: 8px; background: #222; border:1px solid var(--border); object-fit: cover; }
+        .m-img-input { flex: 1; font-size: 0.75rem; color: var(--text-muted); }
+
+        .ai-tools {
+            display: flex; gap: 0.6rem; overflow-x: auto; padding: 0.8rem 1.2rem; scrollbar-width: none;
+        }
+        .ai-tools::-webkit-scrollbar { display: none; }
+        .ai-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-accent);
+            color: var(--accent);
+            padding: 0.6rem 1rem;
+            border-radius: 100px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            white-space: nowrap;
+            display: flex; align-items: center; gap: 6px;
+        }
+    </style>
+</head>
+<body class="nav-body">
+<div class="app-shell">
+    <div class="menu-builder-header">
+        <div style="display:flex; align-items:center; gap:0.8rem;">
+            <a href="/admin/stores/{{ store.id }}/config" style="color:var(--text);"><i class="fa-solid fa-arrow-left"></i></a>
+            <h1 style="font-size:1.2rem; font-weight:800;">메뉴 관리</h1>
+        </div>
+        <button type="button" onclick="saveAll()" class="btn btn-primary btn-sm">전체 저장</button>
+    </div>
+
+    <!-- AI 도구 모음 -->
+    <div class="ai-tools">
+        <div class="ai-btn" onclick="analyzeMenuPhoto()"><i class="fa-solid fa-camera"></i> 사진 분석 추가</div>
+        <div class="ai-btn" onclick="generateAIMenu()"><i class="fa-solid fa-wand-magic-sparkles"></i> AI 자동 구성</div>
+        <div class="ai-btn" onclick="addCategory()"><i class="fa-solid fa-plus-circle"></i> 폴더 추가</div>
+    </div>
+
+    <form id="menuForm" method="POST" class="m-container">
+        <div id="categoryContainer"></div>
+        <input type="hidden" name="menu_data" id="final_menu_data">
+        <input type="hidden" id="menu_data_raw" value='{{ store.menu_data | tojson | safe if store.menu_data else "{}" }}'>
+    </form>
+
+    <input type="file" id="imageInput" style="display:none" accept="image/*" onchange="handleImage(this)">
+</div>
+
+<script>
+    let menuData = JSON.parse(document.getElementById('menu_data_raw').value || '{}');
+    if (Object.keys(menuData).length === 0) menuData = { "메인 메뉴": [] };
+    
+    let currentTarget = { cat: null, idx: null };
+
+    function render() {
+        const container = document.getElementById('categoryContainer');
+        container.innerHTML = '';
+        
+        Object.keys(menuData).forEach(cat => {
+            const section = document.createElement('div');
+            section.className = 'm-category animate-fade-up';
+            
+            let rowsHtml = menuData[cat].map((it, idx) => `
+                <div class="m-row">
+                    <input type="text" value="${it.name}" placeholder="메뉴명" onchange="menuData['${cat}'][${idx}].name=this.value" class="form-control">
+                    <input type="number" value="${it.price}" placeholder="가격" onchange="menuData['${cat}'][${idx}].price=parseInt(this.value)" class="form-control">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="removeIdx('${cat}', ${idx})" style="color:var(--danger); aspect-ratio:1;"><i class="fa-solid fa-trash"></i></button>
+                </div>
+                <div class="m-img-row">
+                    <img src="${it.image || '/static/images/placeholder.png'}" class="m-img-preview" id="prev-${cat}-${idx}" onclick="openImg('${cat}', ${idx})">
+                    <input type="text" value="${it.image || ''}" class="form-control m-img-input" placeholder="이미지 URL" onchange="menuData['${cat}'][${idx}].image=this.value">
+                </div>
+            `).join('');
+
+            section.innerHTML = `
+                <div class="m-cat-header">
+                    <input type="text" class="m-cat-title" value="${cat}" onchange="renameCat('${cat}', this.value)">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="removeCat('${cat}')"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="m-items">${rowsHtml}</div>
+                <button type="button" class="btn btn-secondary w-100 mt-1" onclick="addItem('${cat}')" style="font-size:0.8rem; padding:0.8rem;">+ 메뉴 추가</button>
+            `;
+            container.appendChild(section);
+        });
+    }
+
+    function renameCat(old, n) { if(!n || menuData[n]) return; menuData[n]=menuData[old]; delete menuData[old]; render(); }
+    function removeCat(c) { if(confirm('카테고리를 삭제할까요?')) { delete menuData[c]; render(); } }
+    function addItem(c) { menuData[c].push({name:'', price:0, image:''}); render(); }
+    function removeIdx(c, i) { menuData[c].splice(i, 1); render(); }
+    function addCategory() { const n=prompt('카테고리명:'); if(n) { menuData[n]=[]; render(); } }
+
+    function openImg(cat, idx) { currentTarget={cat, idx}; document.getElementById('imageInput').click(); }
+    async function handleImage(input) {
+        if(!input.files[0]) return;
+        const fd = new FormData();
+        fd.append('file', input.files[0]);
+        const r = await fetch('/api/admin/upload', { method:'POST', body:fd });
+        const d = await r.json();
+        if(d.url) {
+            menuData[currentTarget.cat][currentTarget.idx].image = d.url;
+            render();
+        }
+    }
+
+    async function generateAIMenu() {
+        const type = prompt("업종을 입력하세요 (예: 카페, 치킨, 고기집)");
+        if(!type) return;
+        const res = await fetch(`/api/ai-menu-template?type=${encodeURIComponent(type)}`);
+        const data = await res.json();
+        if(data && Object.keys(data).length > 0) {
+            menuData = data;
+            render();
+        }
+    }
+
+    async function analyzeMenuPhoto() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            const fd = new FormData();
+            fd.append('file', file);
+            alert("✨ AI가 메뉴판을 분석 중입니다... 잠시만 기다려주세요.");
+            const r = await fetch('/api/admin/menu-analyze', { method:'POST', body:fd });
+            const d = await r.json();
+            if(d.menu_data) {
+                menuData = d.menu_data;
+                render();
+            }
+        };
+        input.click();
+    }
+
+    function saveAll() {
+        document.getElementById('final_menu_data').value = JSON.stringify(menuData);
+        document.getElementById('menuForm').submit();
+    }
+
+    render();
+</script>
+</body>
+</html>

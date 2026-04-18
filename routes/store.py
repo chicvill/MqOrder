@@ -105,6 +105,63 @@ def init_store_routes(app):
         
         return jsonify(result)
 
+    @app.route('/api/<slug>/home-stats')
+    def api_get_home_stats(slug):
+        """[신규] 홈/카운터용 실시간 요약 통계"""
+        store = db.session.get(Store, slug)
+        if not store: return jsonify({'error': 'Not found'}), 404
+
+        # KST 오늘 시작 시간 (UTC 기준, 대략 9시간 차감)
+        from datetime import date
+        today_start = datetime.combine(date.today(), datetime.min.time()) - timedelta(hours=9)
+
+        # 1. 매출 및 주문 건수
+        summary = db.session.query(
+            func.sum(Order.total_price),
+            func.count(Order.id)
+        ).filter(Order.store_id == slug, Order.status == 'paid', Order.created_at >= today_start).first()
+
+        # 2. 실시간 상태 카운트
+        new_count = Order.query.filter(Order.store_id == slug, Order.status == 'pending', Order.created_at >= today_start).count()
+        cooking_count = new_count # 현재 pending이 주방에서 조리 전/중을 모두 포함
+        ready_count = Order.query.filter(Order.store_id == slug, Order.status == 'ready').count()
+        waiting_count = Waiting.query.filter_by(store_id=slug, status='waiting').count()
+
+        return jsonify({
+            'today_revenue': int(summary[0] or 0),
+            'today_orders': int(summary[1] or 0),
+            'new_orders': new_count,
+            'cooking': cooking_count,
+            'serving_ready': ready_count,
+            'waiting': waiting_count
+        })
+
+    @app.route('/api/<slug>/live-orders')
+    def api_get_live_orders(slug):
+        """[신규] 홈용 진행 중인 주문 요약 목록"""
+        orders = Order.query.filter(
+            Order.store_id == slug,
+            Order.status.in_(['pending', 'ready', 'serving'])
+        ).order_by(Order.created_at.desc()).limit(10).all()
+        
+        result = []
+        for o in orders:
+            elapsed = ""
+            if o.created_at:
+                diff = datetime.utcnow() - o.created_at
+                mins = int(diff.total_seconds() / 60)
+                elapsed = f"{mins}분 전"
+            
+            result.append({
+                'id': o.id,
+                'table_id': o.table_id,
+                'status': o.status,
+                'total_price': o.total_price,
+                'elapsed': elapsed,
+                'items': [{'name': i.name, 'quantity': i.quantity} for i in o.items[:2]]
+            })
+        return jsonify(result)
+
     @app.route('/api/<slug>/admin-chat', methods=['POST'])
     def api_admin_chat(slug):
         """
@@ -150,6 +207,15 @@ def init_store_routes(app):
         reply_text = generate_admin_reply(query, store.name, live_data)
         
         return jsonify({"reply": reply_text})
+        
+    @app.route('/api/<slug>/order-commentary', methods=['POST'])
+    def api_order_commentary(slug):
+        data = request.json
+        cart = data.get('cart', {})
+        store = db.session.get(Store, slug)
+        from MQutils.ai_engine import generate_order_comment
+        comment = generate_order_comment(store.name if store else slug, cart)
+        return jsonify({"comment": comment})
 
     @app.route('/api/ai-menu-template')
     @login_required
@@ -366,6 +432,95 @@ def init_store_routes(app):
         result = handle_chat_order(store.name, menu_dict, message, cart, history, opened_categories)
         
         return jsonify(result)
+
+    @app.route('/api/<slug>/create-order', methods=['POST'])
+    def api_create_order(slug):
+        data = request.json
+        cart = data.get('cart', {})
+        # table_id 숫자 변환 안전처리 (QR 스캔 없을 경우 대비)
+        raw_table_id = data.get('table_id', '0')
+        try:
+            # Jinja에서 '' 이나 'None' 으로 올 수 있으므로 정밀 필터링
+            if not raw_table_id or raw_table_id == 'None' or raw_table_id == '':
+                table_id = 0
+            else:
+                table_id = int(str(raw_table_id).strip())
+        except (ValueError, TypeError):
+            table_id = 0
+            
+        if not cart: return jsonify({'error': 'Empty cart'}), 400
+        
+        store = db.session.get(Store, slug)
+        total_price = 0
+        
+        import uuid
+        order_id = str(uuid.uuid4())
+        
+        from models import Order, OrderItem
+        new_order = Order(
+            id=order_id,
+            store_id=slug,
+            table_id=table_id,
+            status='pending',
+            total_price=0 # 나중에 합산
+        )
+        db.session.add(new_order)
+        
+        for name, qty in cart.items():
+            item_price = 0
+            menu_id = 0
+            # 메뉴 데이터에서 가격 및 ID 조회
+            for cat, items in store.menu_data.items():
+                it = next((i for i in items if i['name'] == name), None)
+                if it:
+                    item_price = it.get('price', 0)
+                    menu_id = it.get('id', 0)
+                    break
+            
+            total_price += item_price * qty
+            new_item = OrderItem(
+                order_id=order_id,
+                menu_id=menu_id,
+                name=name,
+                price=item_price,
+                quantity=qty
+            )
+            db.session.add(new_item)
+            
+        new_order.total_price = total_price
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success', 
+            'order_id': order_id, 
+            'total_price': total_price,
+            'store_name': store.name
+        })
+
+    @app.route('/api/<slug>/mock-pay', methods=['GET', 'POST'])
+    def api_mock_pay(slug):
+        from models import Order
+        from flask import redirect
+        
+        if request.method == 'GET':
+            order_id = request.args.get('orderId') # Toss Payments가 반환하는 파라미터명
+            order = db.session.get(Order, order_id)
+            if order:
+                order.status = 'paid'
+                db.session.commit()
+                socketio.emit('order_status_update', order.to_dict(), room=slug)
+                return redirect(f'/{slug}/receipt?order_id={order_id}')
+            return "결제 정보(Order)를 찾을 수 없습니다.", 404
+        else:
+            data = request.json
+            order_id = data.get('order_id')
+            order = db.session.get(Order, order_id)
+            if order:
+                order.status = 'paid'
+                db.session.commit()
+                socketio.emit('order_status_update', order.to_dict(), room=slug)
+                return jsonify({'status': 'success'})
+            return jsonify({'status': 'error'}), 404
 
     @app.route('/api/<slug>/management-order', methods=['POST'])
     @store_access_required

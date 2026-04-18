@@ -3,160 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>MQnet — 로그인</title>
+    <title>로그인 - MQnet</title>
     <link rel="stylesheet" href="/static/css/base.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .login-wrap {
+        body {
             display: flex;
-            flex-direction: column;
+            align-items: center;
             justify-content: center;
             min-height: 100vh;
-            padding: 2rem 1.5rem;
+            padding: 2rem;
+            background: radial-gradient(circle at top right, rgba(249, 115, 22, 0.15), transparent 400px),
+                        radial-gradient(circle at bottom left, rgba(249, 115, 22, 0.05), transparent 300px);
+        }
+        .login-card {
+            width: 100%;
+            max-width: 400px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 2.5rem 2rem;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            animation: fadeIn 0.6s ease-out;
         }
         .login-logo {
             text-align: center;
-            margin-bottom: 2.5rem;
+            margin-bottom: 2rem;
         }
-        .login-logo .brand {
-            font-family: var(--font-display);
-            font-size: 2.5rem;
-            font-weight: 800;
-            background: linear-gradient(90deg, var(--accent), var(--accent-blue));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -1px;
-            text-decoration: none;
-            display: block;
+        .login-logo i {
+            font-size: 3rem;
+            color: var(--accent);
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 0 10px var(--accent-dim));
         }
-        .login-logo .tagline {
-            font-size: 0.88rem;
-            color: var(--text-muted);
-            margin-top: 0.4rem;
+        .login-logo h1 { font-size: 1.8rem; font-weight: 900; letter-spacing: -1px; }
+        .login-logo p { color: var(--text-muted); font-size: 0.9rem; margin-top: 0.4rem; }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
         }
-        .login-card {
-            background: var(--bg-glass);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-xl);
-            padding: 2rem 1.5rem;
-        }
-        .input-icon-wrap {
+        .input-group {
             position: relative;
         }
-        .input-icon-wrap .form-control {
-            padding-left: 2.8rem;
-        }
-        .input-icon {
+        .input-group i {
             position: absolute;
-            left: 1rem;
+            left: 1.2rem;
             top: 50%;
             transform: translateY(-50%);
             color: var(--text-muted);
-            font-size: 0.95rem;
-        }
-        .signup-prompt {
-            text-align: center;
-            margin-top: 2rem;
             font-size: 0.9rem;
-            color: var(--text-dim);
         }
-        .signup-prompt a {
-            color: var(--accent);
-            font-weight: 700;
-            text-decoration: none;
+        .input-group input {
+            padding-left: 3.2rem !important;
         }
-        .forgot-link {
-            text-align: right;
-            font-size: 0.8rem;
-            margin-top: 0.3rem;
-        }
-        .forgot-link a {
+
+        .auth-footer {
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.85rem;
             color: var(--text-muted);
-            text-decoration: none;
         }
-        .forgot-link a:hover { color: var(--accent); }
+        .auth-footer a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
-<div class="app-shell">
-<div class="login-wrap">
+    <div class="login-card">
+        <div class="login-logo">
+            <i class="fa-solid fa-fire-glow"></i>
+            <h1>MQnet</h1>
+            <p>미래형 매장 운영의 시작</p>
+        </div>
 
-    <!-- Logo -->
-    <div class="login-logo">
-        <a href="/" class="brand">MQnet</a>
-        <p class="tagline">AI 클라우드 매장 관리 플랫폼</p>
-    </div>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="status-chip" style="background:rgba(239,68,68,0.1); color:var(--danger); width:100%; border:1px solid rgba(239,68,68,0.2); justify-content:center; margin-bottom:1.5rem; padding:0.8rem;">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% for cat, msg in messages %}
-    <div class="flash-msg flash-{{ 'error' if cat == 'error' else 'success' }}" style="margin-bottom:1rem;">
-        <i class="fa-solid fa-{{ 'circle-xmark' if cat == 'error' else 'circle-check' }}"></i>
-        {{ msg }}
-    </div>
-    {% endfor %}
-    {% endwith %}
-
-    <!-- Login Card -->
-    <div class="login-card animate-fade-up">
-        <h1 style="font-family: var(--font-display); font-size:1.4rem; margin-bottom:1.8rem; font-weight:700;">
-            로그인
-        </h1>
-
-        <form method="POST" action="/login">
-            <div class="form-group">
-                <label for="username">아이디</label>
-                <div class="input-icon-wrap">
-                    <i class="fa-solid fa-user input-icon"></i>
-                    <input class="form-control" type="text" id="username" name="username"
-                        placeholder="아이디를 입력하세요" autocomplete="username" required>
-                </div>
+        <form action="/login" method="post" class="auth-form">
+            <div class="input-group">
+                <i class="fa-solid fa-user"></i>
+                <input type="text" name="username" class="form-control" placeholder="아이디" required autofocus>
             </div>
-
-            <div class="form-group" style="margin-bottom:0.8rem;">
-                <label for="password">비밀번호</label>
-                <div class="input-icon-wrap">
-                    <i class="fa-solid fa-lock input-icon"></i>
-                    <input class="form-control" type="password" id="password" name="password"
-                        placeholder="비밀번호를 입력하세요" autocomplete="current-password" required>
-                </div>
+            <div class="input-group">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" name="password" class="form-control" placeholder="비밀번호" required>
             </div>
-
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.85rem; color:var(--text-dim);">
-                    <input type="checkbox" name="remember_me" value="yes" style="accent-color:var(--accent);">
-                    로그인 유지 (자동 로그아웃 방지)
-                </label>
-                <div class="forgot-link"><a href="#">비밀번호 찾기</a></div>
-            </div>
-
-            <div style="margin-top: 2rem;">
-                <button type="submit" class="btn btn-primary" id="loginBtn">
-                    <i class="fa-solid fa-right-to-bracket"></i> 로그인
-                </button>
-            </div>
+            
+            <button type="submit" class="btn btn-primary" style="padding:1rem; font-size:1rem; margin-top:0.5rem;">로그인</button>
         </form>
 
-        <div class="divider-text" style="margin: 1.5rem 0;">또는</div>
-
-        <a href="/register" class="btn btn-secondary">
-            <i class="fa-solid fa-store"></i> 새 매장 가입 (7일 무료 체험)
-        </a>
+        <div class="auth-footer">
+            계정이 없으신가요? <a href="/signup">회원가입 신청</a>
+        </div>
     </div>
-
-    <div class="signup-prompt">
-        아직 계정이 없으신가요? <a href="/register">무료로 시작하기 →</a>
-    </div>
-
-</div>
-</div>
-
-<script>
-document.querySelector('form').addEventListener('submit', function() {
-    const btn = document.getElementById('loginBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 로그인 중...';
-});
-</script>
 </body>
 </html>

@@ -1,0 +1,58 @@
+{% macro bottom_nav(active='home', store_id=none) %}
+{# 
+  active: 'home' | 'menu' | 'counter' | 'stats' | 'settings'
+  store_id: 매장 slug (owner용)
+#}
+<nav class="bottom-nav">
+    <a href="/portal/home"
+       class="bottom-nav-item {% if active == 'home' %}active{% endif %}">
+        <i class="fa-solid fa-house"></i>
+        <span>홈</span>
+    </a>
+
+    {% if store_id %}
+    <a href="/{{ store_id }}/menu"
+       class="bottom-nav-item {% if active == 'menu' %}active{% endif %}">
+        <i class="fa-solid fa-utensils"></i>
+        <span>메뉴</span>
+    </a>
+    <a href="/{{ store_id }}/counter"
+       class="bottom-nav-item {% if active == 'counter' %}active{% endif %}">
+        <i class="fa-solid fa-clipboard-list"></i>
+        <span>카운터</span>
+    </a>
+    <a href="/{{ store_id }}/stats"
+       class="bottom-nav-item {% if active == 'stats' %}active{% endif %}">
+        <i class="fa-solid fa-chart-bar"></i>
+        <span>통계</span>
+    </a>
+    <a href="/admin/stores/{{ store_id }}/config"
+       class="bottom-nav-item {% if active == 'settings' %}active{% endif %}">
+        <i class="fa-solid fa-gear"></i>
+        <span>설정</span>
+    </a>
+    {% else %}
+    {# 관리자 / 직원 모드 (store_id 없을 때) #}
+    <a href="/admin/stores"
+       class="bottom-nav-item {% if active == 'menu' %}active{% endif %}">
+        <i class="fa-solid fa-store"></i>
+        <span>매장</span>
+    </a>
+    <a href="/counter"
+       class="bottom-nav-item {% if active == 'counter' %}active{% endif %}">
+        <i class="fa-solid fa-clipboard-list"></i>
+        <span>카운터</span>
+    </a>
+    <a href="/admin/stores-billing"
+       class="bottom-nav-item {% if active == 'stats' %}active{% endif %}">
+        <i class="fa-solid fa-chart-bar"></i>
+        <span>현황</span>
+    </a>
+    <a href="/admin/settings"
+       class="bottom-nav-item {% if active == 'settings' %}active{% endif %}">
+        <i class="fa-solid fa-gear"></i>
+        <span>설정</span>
+    </a>
+    {% endif %}
+</nav>
+{% endmacro %}

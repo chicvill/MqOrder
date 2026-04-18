@@ -58,7 +58,7 @@ def ping():
 
 
 @misc_bp.route('/api/health')
-def health_check():
+def health_check_api(): # 이름을 유니크하게 변경
     """프론트엔드 모니터링용 상세 헬스체크"""
     health = {"server": "online", "db": "offline", "time": datetime.now().strftime('%H:%M:%S')}
     try:
@@ -67,6 +67,11 @@ def health_check():
     except Exception as e:
         health["db"] = f"error: {str(e)[:50]}"
     return jsonify(health)
+
+@misc_bp.route('/health')
+def health_check_simple():
+    """Keep-alive 핑 대응을 위한 단순 헬스체크"""
+    return "OK", 200
 
 
 # ─── 계좌이체 안내 ──────────────────────────────────────────

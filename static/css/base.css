@@ -1,33 +1,56 @@
 /* =========================================================
    MQnet Global CSS — Mobile-First Shell System
-   모든 화면: 최대 480px 카드, PC/태블릿은 중앙 정렬
+   디자인 기준: web_Design/d01~d15 (오렌지 다크 테마)
    ========================================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap');
 
 /* ── 0. Design Tokens ── */
 :root {
-    --bg: #050a14;
-    --bg-card: rgba(14, 22, 38, 0.95);
-    --bg-glass: rgba(255, 255, 255, 0.04);
-    --accent: #00f2ff;
-    --accent-blue: #3b82f6;
-    --accent-hover: #00d4e0;
-    --danger: #ff5c5c;
-    --success: #22d3a5;
-    --text: #ffffff;
-    --text-dim: #a0aec0;
-    --text-muted: #64748b;
-    --border: rgba(255, 255, 255, 0.1);
-    --border-accent: rgba(0, 242, 255, 0.35);
-    --radius-sm: 12px;
-    --radius-md: 20px;
-    --radius-lg: 28px;
-    --radius-xl: 36px;
-    --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-    --shadow-glow: 0 0 24px rgba(0, 242, 255, 0.2);
-    --font-main: 'Inter', -apple-system, sans-serif;
-    --font-display: 'Outfit', sans-serif;
+    /* 배경 */
+    --bg:          #0f0f0f;
+    --bg-card:     #1c1c1e;
+    --bg-glass:    rgba(255, 255, 255, 0.05);
+
+    /* 포인트 — 오렌지 */
+    --accent:        #f97316;
+    --accent-hover:  #ea6c0a;
+    --accent-dim:    rgba(249, 115, 22, 0.15);
+    --accent-blue:   #3b82f6;
+    --accent-green:  #22c55e;
+
+    /* 상태 */
+    --danger:        #ef4444;
+    --warning:       #f59e0b;
+    --success:       #22c55e;
+    --info:          #60a5fa;
+
+    /* 텍스트 */
+    --text:          #ffffff;
+    --text-dim:      #a1a1aa;
+    --text-muted:    #52525b;
+
+    /* 테두리 */
+    --border:        rgba(255, 255, 255, 0.08);
+    --border-accent: rgba(249, 115, 22, 0.35);
+
+    /* 모서리 */
+    --radius-xs:  8px;
+    --radius-sm:  12px;
+    --radius-md:  16px;
+    --radius-lg:  20px;
+    --radius-xl:  28px;
+
+    /* 그림자 */
+    --shadow:       0 4px 24px rgba(0, 0, 0, 0.5);
+    --shadow-glow:  0 0 24px rgba(249, 115, 22, 0.3);
+
+    /* 폰트 */
+    --font-main:    'Noto Sans KR', -apple-system, sans-serif;
+    --font-display: 'Noto Sans KR', sans-serif;
+
+    /* 레이아웃 */
+    --bottom-nav-height: 64px;
 }
 
 /* ── 1. Reset ── */
@@ -42,7 +65,7 @@ body {
     overflow-x: hidden;
 }
 
-/* ── 2. Mobile Shell — 앱처럼 보이는 최대 480px 중앙 카드 ── */
+/* ── 2. Mobile Shell ── */
 .app-shell {
     max-width: 480px;
     min-height: 100vh;
@@ -52,57 +75,145 @@ body {
     overflow-x: hidden;
 }
 
-/* PC / 태블릿에서는 양옆 프리미엄 배경 */
 @media (min-width: 481px) {
     body {
         background:
-            radial-gradient(ellipse 60% 50% at 20% 20%, rgba(0, 242, 255, 0.06) 0%, transparent 70%),
-            radial-gradient(ellipse 60% 50% at 80% 80%, rgba(59, 130, 246, 0.06) 0%, transparent 70%),
-            #050a14;
+            radial-gradient(ellipse 60% 50% at 20% 20%, rgba(249,115,22,0.05) 0%, transparent 70%),
+            radial-gradient(ellipse 60% 50% at 80% 80%, rgba(59,130,246,0.04) 0%, transparent 70%),
+            #0a0a0a;
     }
     .app-shell {
-        box-shadow: 0 0 80px rgba(0, 0, 0, 0.8), 0 0 0 1px var(--border);
+        box-shadow: 0 0 60px rgba(0,0,0,0.8), 0 0 0 1px var(--border);
     }
 }
 
-/* ── 3. Sticky Top Header ── */
+/* ── 3. Header ── */
 .app-header {
-    padding: 1.2rem 1.5rem;
+    padding: 1rem 1.5rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    background: rgba(5, 10, 20, 0.85);
+    background: var(--bg);
     border-bottom: 1px solid var(--border);
     position: sticky;
     top: 0;
     z-index: 100;
 }
 
-.app-logo {
-    font-family: var(--font-display);
-    font-size: 1.5rem;
+/* 단순 페이지 제목용 헤더 */
+.page-header {
+    padding: 1.2rem 1.5rem 0.8rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.page-header-title {
+    font-size: 1.6rem;
     font-weight: 800;
-    background: linear-gradient(90deg, var(--accent), var(--accent-blue));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--text);
+    letter-spacing: -0.5px;
+}
+
+.app-logo {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--accent);
     letter-spacing: -0.5px;
     text-decoration: none;
 }
 
-/* ── 4. Page Content ── */
-.page-content {
-    padding: 1.5rem;
+/* ── 4. Bottom Navigation Bar ── */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
+    height: var(--bottom-nav-height);
+    background: #1c1c1e;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    z-index: 200;
+    padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
-/* ── 5. Cards ── */
+.bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    flex: 1;
+    text-decoration: none;
+    color: var(--text-muted);
+    padding: 8px 0;
+    transition: color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.bottom-nav-item.active { color: var(--accent); }
+.bottom-nav-item:active { opacity: 0.7; }
+
+.bottom-nav-item i {
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.bottom-nav-item span {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+}
+
+/* 바텀 네비가 있는 페이지의 컨텐츠 하단 여백 */
+.nav-body {
+    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 8px));
+}
+
+/* ── 5. FAB (음성 명령 플로팅 버튼) ── */
+.fab {
+    position: fixed;
+    right: calc(50% - 220px);
+    bottom: calc(var(--bottom-nav-height) + 16px);
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    font-size: 1.3rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 20px rgba(249,115,22,0.45);
+    z-index: 150;
+    transition: transform 0.2s, box-shadow 0.2s;
+    -webkit-tap-highlight-color: transparent;
+}
+.fab:active { transform: scale(0.93); }
+
+@media (max-width: 480px) {
+    .fab { right: 16px; }
+}
+
+/* ── 6. Cards ── */
 .card {
-    background: var(--bg-glass);
+    background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    padding: 1.5rem;
-    margin-bottom: 1.2rem;
+    padding: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+.card-orange {
+    background: var(--accent);
+    border-radius: var(--radius-lg);
+    padding: 1.2rem 1.4rem;
+    color: #fff;
 }
 
 .card-accent {
@@ -110,35 +221,285 @@ body {
     box-shadow: var(--shadow-glow);
 }
 
-/* ── 6. Typography ── */
-.page-title {
-    font-family: var(--font-display);
-    font-size: 1.6rem;
-    font-weight: 800;
-    line-height: 1.2;
-    letter-spacing: -0.5px;
+.card-danger {
+    border-color: rgba(239,68,68,0.5);
+    box-shadow: 0 0 0 2px rgba(239,68,68,0.15);
 }
 
-.page-subtitle {
+/* ── 7. Status Chips (홈 상단 요약) ── */
+.status-chips {
+    display: flex;
+    gap: 0.6rem;
+    padding: 0 1.2rem 1rem;
+}
+
+.status-chip {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0.8rem 0.6rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    text-align: center;
+}
+
+.status-chip .chip-icon { font-size: 1.2rem; }
+.status-chip .chip-count {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--text);
+}
+.status-chip .chip-label {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* ── 8. Order Cards (카운터/홈 진행주문) ── */
+.order-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.1rem;
+    margin-bottom: 0.7rem;
+}
+
+.order-card.delayed {
+    border-color: rgba(239,68,68,0.6);
+    box-shadow: 0 0 0 1px rgba(239,68,68,0.15);
+}
+
+.order-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.7rem;
+}
+
+.table-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
     font-size: 0.95rem;
+    flex-shrink: 0;
+}
+
+.table-badge.new      { background: #f97316; color: #fff; }
+.table-badge.cooking  { background: #c2410c; color: #fff; }
+.table-badge.serving  { background: #16a34a; color: #fff; }
+.table-badge.waiting  { background: #2563eb; color: #fff; }
+
+.order-price {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--accent);
+}
+
+.order-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.order-time.delayed { color: var(--danger); }
+
+.order-items {
+    margin-bottom: 0.8rem;
+}
+
+.order-item-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.88rem;
+    padding: 2px 0;
     color: var(--text-dim);
-    margin-top: 0.5rem;
+}
+
+.order-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+/* ── 9. Action Buttons (주문 상태 버튼) ── */
+.btn-cook-start  { background: #d97706; color: #fff; }
+.btn-cook-done   { background: var(--accent); color: #fff; }
+.btn-serve-done  { background: #16a34a; color: #fff; }
+.btn-admit       { background: #2563eb; color: #fff; }
+
+/* ── 10. Tabs ── */
+.tab-bar {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.tab-bar::-webkit-scrollbar { display: none; }
+
+.tab-item {
+    flex-shrink: 0;
+    padding: 0.7rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    text-decoration: none;
+}
+
+.tab-item.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+.tab-badge {
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 800;
+    border-radius: 100px;
+    padding: 1px 6px;
+    min-width: 18px;
+    text-align: center;
+}
+
+.tab-badge.blue { background: #2563eb; }
+
+/* ── 11. Quick Menu Grid ── */
+.quick-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.7rem;
+    padding: 0 1.2rem 1rem;
+}
+
+.quick-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.1rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.55rem;
+    text-decoration: none;
+    color: var(--text);
+    transition: background 0.15s, transform 0.15s;
+    -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
+}
+.quick-btn:active { transform: scale(0.96); background: rgba(255,255,255,0.07); }
+
+.q-icon {
+    width: 46px; height: 46px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem;
+}
+.q-icon.orange { background: rgba(249,115,22,0.15); color: var(--accent); }
+.q-icon.blue   { background: rgba(59,130,246,0.15);  color: #60a5fa; }
+.q-icon.green  { background: rgba(34,197,94,0.15);   color: #4ade80; }
+.q-icon.purple { background: rgba(168,85,247,0.15);  color: #c084fc; }
+.q-icon.red    { background: rgba(239,68,68,0.15);   color: #f87171; }
+.q-icon.gray   { background: rgba(255,255,255,0.07); color: var(--text-dim); }
+/* 기존 cyan 클래스 → 오렌지로 매핑 (하위 호환) */
+.q-icon.cyan   { background: rgba(249,115,22,0.15); color: var(--accent); }
+
+.q-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-align: center;
+}
+
+/* ── 12. Menu List Rows ── */
+.menu-section {
+    padding: 0 1.2rem 1rem;
+}
+
+.menu-list {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.menu-row {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.95rem 1.1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    text-decoration: none;
+    color: var(--text);
+    transition: background 0.12s;
+    -webkit-tap-highlight-color: transparent;
+}
+.menu-row:last-child { border-bottom: none; }
+.menu-row:active { background: rgba(255,255,255,0.04); }
+
+.m-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.m-text { flex: 1; }
+.m-title { font-size: 0.9rem; font-weight: 600; }
+.m-sub   { font-size: 0.75rem; color: var(--text-muted); margin-top: 1px; }
+.m-value { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; }
+.m-arrow { color: var(--text-muted); font-size: 0.75rem; }
+
+/* ── 13. Section Headers ── */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.2rem 0.5rem;
+}
+
+.section-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.section-link {
+    font-size: 0.8rem;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
 }
 
 .section-label {
     font-size: 0.75rem;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    color: var(--accent);
-    margin-bottom: 0.8rem;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    padding: 0.6rem 1.2rem 0.3rem;
     display: block;
+    text-transform: uppercase;
 }
 
-/* ── 7. Form Elements ── */
-.form-group {
-    margin-bottom: 1.2rem;
-}
+/* ── 14. Form Elements ── */
+.form-group { margin-bottom: 1.2rem; }
 
 .form-group label {
     display: block;
@@ -146,123 +507,173 @@ body {
     font-weight: 600;
     color: var(--text-dim);
     margin-bottom: 0.5rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
 }
 
 .form-control {
     width: 100%;
     padding: 0.9rem 1.1rem;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0,0,0,0.35);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     color: var(--text);
     font-family: var(--font-main);
     font-size: 1rem;
     outline: none;
-    transition: border-color 0.25s, box-shadow 0.25s;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .form-control:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(0, 242, 255, 0.12);
+    box-shadow: 0 0 0 3px rgba(249,115,22,0.15);
 }
 
 .form-control::placeholder { color: var(--text-muted); }
+.form-hint  { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.4rem; }
+.form-error { font-size: 0.78rem; color: var(--danger); margin-top: 0.4rem; }
 
-.form-hint {
-    font-size: 0.78rem;
+/* 검색창 */
+.search-bar {
+    margin: 0 1.2rem 1rem;
+    position: relative;
+}
+.search-bar i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
     color: var(--text-muted);
-    margin-top: 0.4rem;
 }
-
-.form-error {
-    font-size: 0.78rem;
-    color: var(--danger);
-    margin-top: 0.4rem;
+.search-bar input {
+    width: 100%;
+    padding: 0.8rem 1rem 0.8rem 2.5rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text);
+    font-family: var(--font-main);
+    font-size: 0.9rem;
+    outline: none;
 }
+.search-bar input:focus { border-color: var(--accent); }
+.search-bar input::placeholder { color: var(--text-muted); }
 
-/* ── 8. Buttons ── */
+/* ── 15. Buttons ── */
 .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    padding: 0.9rem 1.5rem;
+    padding: 0.85rem 1.4rem;
     border-radius: var(--radius-md);
     font-family: var(--font-main);
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 700;
     cursor: pointer;
     border: none;
     text-decoration: none;
-    transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+    transition: transform 0.15s, opacity 0.15s;
     -webkit-tap-highlight-color: transparent;
 }
-
-.btn:active { transform: scale(0.97); }
+.btn:active { transform: scale(0.97); opacity: 0.9; }
 
 .btn-primary {
     background: var(--accent);
-    color: #000;
+    color: #fff;
     width: 100%;
 }
-.btn-primary:hover { background: var(--accent-hover); box-shadow: var(--shadow-glow); }
+.btn-primary:hover { background: var(--accent-hover); }
 
 .btn-secondary {
-    background: var(--bg-glass);
+    background: var(--bg-card);
     color: var(--text);
     border: 1px solid var(--border);
     width: 100%;
 }
-.btn-secondary:hover { background: rgba(255,255,255,0.08); }
+
+.btn-danger {
+    background: rgba(239,68,68,0.1);
+    color: var(--danger);
+    border: 1px solid rgba(239,68,68,0.25);
+    width: 100%;
+}
 
 .btn-sm {
-    padding: 0.6rem 1.1rem;
-    font-size: 0.88rem;
+    padding: 0.55rem 1rem;
+    font-size: 0.82rem;
     border-radius: var(--radius-sm);
     width: auto;
 }
 
-/* ── 9. Flash Messages ── */
-.flash-msg {
-    padding: 0.9rem 1.2rem;
-    border-radius: var(--radius-sm);
-    margin-bottom: 1.2rem;
-    font-size: 0.9rem;
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-}
-.flash-error {
-    background: rgba(255, 92, 92, 0.1);
-    border: 1px solid rgba(255, 92, 92, 0.3);
-    color: #ff8080;
-}
-.flash-success {
-    background: rgba(34, 211, 165, 0.1);
-    border: 1px solid rgba(34, 211, 165, 0.3);
-    color: var(--success);
+.btn-xs {
+    padding: 0.35rem 0.7rem;
+    font-size: 0.75rem;
+    border-radius: var(--radius-xs);
+    width: auto;
 }
 
-/* ── 10. Badges ── */
+/* 헤더용 소형 버튼 */
+.header-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity 0.15s;
+}
+
+.header-btn.orange { background: var(--accent); color: #fff; }
+.header-btn.outline { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+
+/* ── 16. Badges ── */
 .badge {
     display: inline-flex;
     align-items: center;
-    padding: 0.2rem 0.7rem;
+    padding: 0.2rem 0.65rem;
     border-radius: 100px;
     font-size: 0.72rem;
     font-weight: 700;
+    white-space: nowrap;
 }
-.badge-cyan { background: rgba(0,242,255,0.12); color: var(--accent); border: 1px solid var(--border-accent); }
-.badge-red  { background: rgba(255,92,92,0.12);  color: var(--danger); border: 1px solid rgba(255,92,92,0.3); }
-.badge-green{ background: rgba(34,211,165,0.12); color: var(--success); border: 1px solid rgba(34,211,165,0.3); }
+.badge-orange  { background: rgba(249,115,22,0.15); color: var(--accent); border: 1px solid var(--border-accent); }
+.badge-green   { background: rgba(34,197,94,0.15);  color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+.badge-blue    { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+.badge-red     { background: rgba(239,68,68,0.15);  color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+.badge-gray    { background: rgba(255,255,255,0.07); color: var(--text-muted); border: 1px solid var(--border); }
+/* 하위 호환 */
+.badge-cyan    { background: rgba(249,115,22,0.12); color: var(--accent); border: 1px solid var(--border-accent); }
 
-/* ── 11. Divider ── */
+/* ── 17. Flash Messages ── */
+.flash-msg {
+    margin: 0.8rem 1.2rem;
+    padding: 0.8rem 1rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+.flash-error   { background: rgba(239,68,68,0.1);  border: 1px solid rgba(239,68,68,0.25);  color: #f87171; }
+.flash-success { background: rgba(34,197,94,0.1);  border: 1px solid rgba(34,197,94,0.25);  color: #4ade80; }
+.flash-info    { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.25); color: #60a5fa; }
+
+/* ── 18. Typography ── */
+.page-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+/* ── 19. Divider ── */
 .divider {
     border: none;
     border-top: 1px solid var(--border);
-    margin: 1.5rem 0;
+    margin: 1rem 0;
 }
 .divider-text {
     display: flex;
@@ -273,25 +684,34 @@ body {
     margin: 1.5rem 0;
 }
 .divider-text::before,
-.divider-text::after {
-    content: '';
-    flex: 1;
-    border-top: 1px solid var(--border);
-}
+.divider-text::after { content: ''; flex: 1; border-top: 1px solid var(--border); }
 
-/* ── 12. Animations ── */
+/* ── 20. Animations ── */
 @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(16px); }
+    from { opacity: 0; transform: translateY(14px); }
     to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(0,242,255,0.3); }
-    50%       { box-shadow: 0 0 0 8px rgba(0,242,255,0); }
+@keyframes pulse-orange {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(249,115,22,0.4); }
+    50%       { box-shadow: 0 0 0 8px rgba(249,115,22,0); }
 }
-.animate-fade-up { animation: fadeUp 0.5s ease forwards; }
+.animate-fade-up { animation: fadeUp 0.4s ease forwards; }
 
-/* ── 13. Bottom Safe Area (iOS) ── */
+/* ── 21. Misc Utilities ── */
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 1.5rem); }
-
-/* ── 14. Scroll Lock Utility ── */
 body.lock-scroll { overflow: hidden; }
+
+.text-orange  { color: var(--accent); }
+.text-green   { color: var(--success); }
+.text-red     { color: var(--danger); }
+.text-muted   { color: var(--text-muted); }
+.text-dim     { color: var(--text-dim); }
+
+.fw-800       { font-weight: 800; }
+.fw-700       { font-weight: 700; }
+
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.px-std { padding-left: 1.2rem; padding-right: 1.2rem; }

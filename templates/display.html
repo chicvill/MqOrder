@@ -3,453 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ store.name }} — 주문 현황판</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+    <title>호출 현황 - {{ store.name }}</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
-        :root {
-            --bg: #050a14;
-            --card-ready: #0a2342;
-            --card-waiting: #111827;
-            --gold: #f59e0b;
-            --green: #10b981;
-            --blue: #3b82f6;
-            --red: #ef4444;
-            --text: #f8fafc;
-            --dim: #64748b;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #000;
+            display: flex;
+            flex-direction: column;
             height: 100vh;
             overflow: hidden;
-            display: flex;
-            flex-direction: column;
         }
-
-        /* ─── 헤더 ─── */
-        .dsp-header {
+        .display-header {
+            padding: 2rem 4rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 16px 40px;
+            border-bottom: 2px solid rgba(255,255,255,0.05);
+        }
+        .display-header h1 { font-size: 2.2rem; font-weight: 800; color: var(--text-dim); }
+        .display-header .brand { font-size: 2.2rem; font-weight: 800; color: var(--accent); }
+
+        .display-main {
+            flex: 1;
+            display: flex;
+        }
+
+        .display-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 2rem 4rem;
+        }
+        .display-column.left { border-right: 2px solid rgba(255,255,255,0.05); }
+
+        .column-title {
+            font-size: 2.8rem;
+            font-weight: 800;
+            margin-bottom: 3rem;
+            color: var(--text-muted);
+            text-align: center;
+        }
+        .column-title.highlight { color: var(--accent); }
+
+        .number-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+        }
+        .number-card {
             background: rgba(255,255,255,0.03);
-            border-bottom: 2px solid rgba(245,158,11,0.3);
-            flex-shrink: 0;
-        }
-        .dsp-logo {
-            font-family: 'Black Han Sans', sans-serif;
-            font-size: clamp(1.6rem, 3vw, 2.4rem);
-            color: var(--gold);
-            text-shadow: 0 0 30px rgba(245,158,11,0.5);
-            letter-spacing: 2px;
-        }
-        .dsp-clock {
-            font-size: clamp(1.4rem, 2.5vw, 2rem);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            text-align: center;
+            font-size: 5rem;
             font-weight: 900;
-            color: var(--text);
-            letter-spacing: 2px;
-            font-variant-numeric: tabular-nums;
+            color: #fff;
+            animation: fadeIn 0.5s ease-out;
         }
-        .dsp-date {
-            font-size: 0.85rem;
-            color: var(--dim);
-            text-align: right;
-            margin-top: 3px;
-        }
-
-        /* ─── 메인 2분할 레이아웃 ─── */
-        .dsp-main {
-            flex: 1;
-            display: grid;
-            grid-template-columns: 3fr 1fr;
-            gap: 0;
-            overflow: hidden;
+        .number-card.calling {
+            background: var(--accent-dim);
+            color: var(--accent);
+            border: 2px solid var(--border-accent);
+            animation: pulse-orange 2s infinite;
         }
 
-        /* ─── 좌측: 준비완료 영역 ─── */
-        .dsp-ready-panel {
-            padding: 20px 30px;
-            display: flex;
-            flex-direction: column;
-            border-right: 2px solid rgba(255,255,255,0.05);
-        }
-        .panel-title {
-            font-size: clamp(0.85rem, 1.5vw, 1.1rem);
-            font-weight: 700;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .panel-title .dot {
-            width: 10px; height: 10px;
-            border-radius: 50%;
-            animation: blink 1s infinite;
-        }
-        @keyframes blink { 0%,100% { opacity:1 } 50% { opacity:0.2 } }
-
-        .ready-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(clamp(130px, 15vw, 220px), 1fr));
-            gap: 16px;
-            flex: 1;
-            overflow-y: auto;
-            align-content: start;
-        }
-        .ready-card {
-            background: var(--card-ready);
-            border: 3px solid var(--gold);
-            border-radius: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: clamp(14px, 2.5vw, 28px);
-            animation: cardIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), goldPulse 2s infinite;
-            box-shadow: 0 0 30px rgba(245,158,11,0.2), 0 8px 25px rgba(0,0,0,0.5);
-            position: relative;
-            overflow: hidden;
-        }
-        .ready-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: -100%;
-            width: 60%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(245,158,11,0.1), transparent);
-            animation: shine 3s linear infinite;
-        }
-        @keyframes shine { to { left: 200%; } }
-        @keyframes cardIn {
-            from { transform: scale(0.5) translateY(30px); opacity: 0; }
-            to   { transform: scale(1) translateY(0); opacity: 1; }
-        }
-        @keyframes goldPulse {
-            0%,100% { box-shadow: 0 0 20px rgba(245,158,11,0.2); }
-            50%      { box-shadow: 0 0 40px rgba(245,158,11,0.5), 0 0 80px rgba(245,158,11,0.15); }
-        }
-        .ready-badge {
-            font-size: 0.7rem;
-            font-weight: 800;
-            letter-spacing: 2px;
-            color: var(--gold);
-            background: rgba(245,158,11,0.15);
-            padding: 3px 10px;
-            border-radius: 30px;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-        }
-        .ready-number {
-            font-family: 'Black Han Sans', sans-serif;
-            font-size: clamp(2.8rem, 6vw, 5rem);
-            color: var(--gold);
-            line-height: 1;
-            text-shadow: 0 0 20px rgba(245,158,11,0.6);
-        }
-        .ready-table {
-            font-size: clamp(0.9rem, 1.8vw, 1.3rem);
-            font-weight: 700;
-            color: rgba(255,255,255,0.7);
-            margin-top: 6px;
+        .footer-banner {
+            padding: 2rem;
+            background: var(--bg-card);
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--text-dim);
         }
 
-        /* 대기 없을 때 */
-        .waiting-placeholder {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            opacity: 0.15;
-        }
-        .waiting-placeholder .big-text {
-            font-family: 'Black Han Sans', sans-serif;
-            font-size: clamp(3rem, 8vw, 8rem);
-            letter-spacing: 10px;
-            color: var(--text);
-        }
-        .waiting-placeholder .sub-text {
-            font-size: 1.2rem;
-            margin-top: 10px;
-            letter-spacing: 3px;
-        }
-
-        /* ─── 우측: 대기 중 영역 ─── */
-        .dsp-waiting-panel {
-            background: var(--card-waiting);
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-        }
-        .waiting-list {
-            flex: 1;
-            overflow-y: auto;
-        }
-        .waiting-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 12px;
-            border-radius: 10px;
-            margin-bottom: 8px;
-            background: rgba(255,255,255,0.04);
-            border-left: 3px solid var(--blue);
-            transition: 0.3s;
-        }
-        .waiting-row .w-no {
-            font-size: 1.2rem;
-            font-weight: 900;
-            color: var(--blue);
-            min-width: 36px;
-        }
-        .waiting-row .w-table {
-            font-size: 0.88rem;
-            font-weight: 700;
-            color: var(--text);
-        }
-        .waiting-row .w-items {
-            font-size: 0.75rem;
-            color: var(--dim);
-            max-width: 80px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        /* ─── 하단 티커 ─── */
-        .dsp-ticker {
-            flex-shrink: 0;
-            background: var(--gold);
-            color: #000;
-            height: 44px;
-            display: flex;
-            align-items: center;
-            overflow: hidden;
-        }
-        .ticker-label {
-            background: #000;
-            color: var(--gold);
-            font-weight: 900;
-            font-size: 0.9rem;
-            padding: 0 20px;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            white-space: nowrap;
-            letter-spacing: 2px;
-        }
-        .ticker-track {
-            display: flex;
-            animation: ticker 20s linear infinite;
-            white-space: nowrap;
-        }
-        .ticker-item {
-            font-weight: 800;
-            font-size: 0.95rem;
-            padding: 0 50px;
-        }
-        @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-
-        /* 스크롤바 */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
 <body>
-
-<!-- 알림음 -->
-<audio id="chime" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
-
-<!-- ─── 헤더 ─── -->
-<header class="dsp-header">
-    <div class="dsp-logo">🍽️ {{ store.name }}</div>
-    <div>
-        <div class="dsp-clock" id="clock">--:--:--</div>
-        <div class="dsp-date" id="date-str"></div>
+    <div class="display-header">
+        <h1>고객 호출 시스템</h1>
+        <div class="brand">{{ store.name }}</div>
     </div>
-</header>
 
-<!-- ─── 메인 콘텐츠 ─── -->
-<div class="dsp-main">
-
-    <!-- 좌측: 준비완료 -->
-    <div class="dsp-ready-panel">
-        <div class="panel-title" style="color: var(--gold);">
-            <span class="dot" style="background:var(--gold);"></span>
-            준비 완료 — 수령하세요
-            <span id="ready-count" style="font-size:0.8rem; background:var(--gold); color:#000; padding:2px 10px; border-radius:20px; margin-left:auto;"></span>
+    <div class="display-main">
+        <!-- 준비 중 -->
+        <div class="display-column left">
+            <div class="column-title">준비 중인 번호</div>
+            <div class="number-grid" id="grid-processing">
+                <!-- <div class="number-card">102</div> -->
+            </div>
         </div>
-        <div class="ready-grid" id="ready-grid">
-            <div class="waiting-placeholder">
-                <div class="big-text">READY</div>
-                <div class="sub-text">준비 중...</div>
+
+        <!-- 불러드리는 번호 -->
+        <div class="display-column">
+            <div class="column-title highlight">불러드리는 번호</div>
+            <div class="number-grid" id="grid-calling">
+                <!-- <div class="number-card calling">101</div> -->
             </div>
         </div>
     </div>
 
-    <!-- 우측: 조리 중 -->
-    <div class="dsp-waiting-panel">
-        <div class="panel-title" style="color: var(--blue);">
-            <span class="dot" style="background:var(--blue);"></span>
-            조리 중
-            <span id="waiting-count" style="font-size:0.8rem; background:var(--blue); color:#fff; padding:2px 8px; border-radius:20px; margin-left:auto;"></span>
-        </div>
-        <div class="waiting-list" id="waiting-list">
-            <div style="color:var(--dim); font-size:0.85rem; text-align:center; margin-top:20px;">없음</div>
-        </div>
+    <div class="footer-banner" id="footer-msg">
+        주문하신 음식이 준비되면 번호를 불러드립니다. 잠시만 기다려주세요.
     </div>
 
-</div>
+    <!-- 알림음 -->
+    <audio id="dingdong" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"></audio>
 
-<!-- ─── 하단 티커 ─── -->
-<div class="dsp-ticker">
-    <div class="ticker-label">안내</div>
-    <div style="overflow:hidden; flex:1;">
-        <div class="ticker-track" id="ticker-track">
-            <span class="ticker-item">호출 번호를 확인 후 수령해 주세요 &nbsp;✦&nbsp;</span>
-            <span class="ticker-item">{{ store.name }}을 이용해 주셔서 감사합니다 &nbsp;✦&nbsp;</span>
-            <span class="ticker-item">음식이 준비되면 번호가 표시됩니다 &nbsp;✦&nbsp;</span>
-            <span class="ticker-item">호출 번호를 확인 후 수령해 주세요 &nbsp;✦&nbsp;</span>
-            <span class="ticker-item">{{ store.name }}을 이용해 주셔서 감사합니다 &nbsp;✦&nbsp;</span>
-            <span class="ticker-item">음식이 준비되면 번호가 표시됩니다 &nbsp;✦&nbsp;</span>
-        </div>
-    </div>
-</div>
+    <script>
+        const STORE_ID = "{{ store.id }}";
+        const socket = io();
+        let lastCallingCount = 0;
 
-<script>
-const STORE_ID = "{{ store.id }}";
-
-// ─── 시계 ───
-function updateClock() {
-    const now = new Date();
-    document.getElementById('clock').textContent = now.toLocaleTimeString('ko-KR', {hour12: false});
-    const days = ['일','월','화','수','목','금','토'];
-    document.getElementById('date-str').textContent =
-        `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')} (${days[now.getDay()]})`;
-}
-setInterval(updateClock, 1000);
-updateClock();
-
-// ─── 소켓 + 데이터 관리 ───
-const socket = io({ transports: ['websocket','polling'] });
-
-// orderId → { order_no, table_id, items, status }
-let orders = new Map();
-
-socket.on('connect', () => {
-    socket.emit('join', { store_id: STORE_ID });
-    loadInitialData();
-});
-
-socket.on('order_status_update', (order) => {
-    if (['ready','pending','served','paid','cancelled'].includes(order.status)) {
-        if (order.status === 'paid' || order.status === 'cancelled' || order.status === 'served') {
-            orders.delete(order.id);
-        } else {
-            const existing = orders.get(order.id) || {};
-            orders.set(order.id, {
-                order_no: order.order_no || existing.order_no || '---',
-                table_id: order.table_id || existing.table_id,
-                items: order.items || existing.items || [],
-                status: order.status
-            });
-        }
-        if (order.status === 'ready') playChime();
-        renderAll();
-    }
-});
-
-socket.on('table_status_update', (data) => {
-    if (data.status === 'paid' || data.status === 'served' || data.bulk_reset) {
-        for (let [id, info] of orders) {
-            if (data.bulk_reset || String(info.table_id) === String(data.table_id)) {
-                orders.delete(id);
-            }
-        }
-        renderAll();
-    }
-});
-
-async function loadInitialData() {
-    try {
-        const res = await fetch(`/api/${STORE_ID}/orders`);
-        const data = await res.json();
-        orders.clear();
-        data.forEach(o => {
-            if (!['paid','cancelled'].includes(o.status)) {
-                orders.set(o.id, {
-                    order_no: o.order_no || '---',
-                    table_id: o.table_id,
-                    items: o.items || [],
-                    status: o.status
-                });
-            }
+        socket.on('connect', () => {
+            socket.emit('join', { store_id: STORE_ID });
+            refresh();
         });
-        renderAll();
-    } catch(e) { console.error(e); }
-}
 
-function renderAll() {
-    renderReady();
-    renderWaiting();
-}
+        socket.on('order_status_update', refresh);
+        socket.on('new_order', refresh);
 
-function renderReady() {
-    const readyOrders = [...orders.values()].filter(o => o.status === 'ready');
-    const grid = document.getElementById('ready-grid');
-    document.getElementById('ready-count').textContent = readyOrders.length + '건';
+        async function refresh() {
+            try {
+                const res = await fetch(`/api/${STORE_ID}/orders`);
+                const orders = await res.json();
+                
+                const processing = orders.filter(o => o.status === 'pending').map(o => o.table_id || o.waiting_no || '?');
+                const calling = orders.filter(o => o.status === 'ready').map(o => o.table_id || o.waiting_no || '?');
 
-    if (readyOrders.length === 0) {
-        grid.innerHTML = `
-            <div class="waiting-placeholder col-span-all" style="grid-column:1/-1; height:100%;">
-                <div class="big-text">WAITING</div>
-                <div class="sub-text">조리 후 번호가 표시됩니다</div>
-            </div>`;
-        return;
-    }
+                renderGrid('grid-processing', processing, false);
+                renderGrid('grid-calling', calling, true);
 
-    // 중복 제거
-    const unique = new Map();
-    readyOrders.forEach(o => { unique.set(`${o.order_no}-${o.table_id}`, o); });
+                if (calling.length > lastCallingCount) {
+                    document.getElementById('dingdong').play().catch(()=>{});
+                }
+                lastCallingCount = calling.length;
+            } catch(e) {}
+        }
 
-    grid.innerHTML = [...unique.values()].map(o => `
-        <div class="ready-card">
-            <div class="ready-badge">수령 가능</div>
-            <div class="ready-number">#${o.order_no}</div>
-            <div class="ready-table">${o.table_id}번 테이블</div>
-        </div>
-    `).join('');
-}
+        function renderGrid(id, nums, isCalling) {
+            const el = document.getElementById(id);
+            el.innerHTML = nums.slice(0, 8).map(n => `
+                <div class="number-card ${isCalling ? 'calling' : ''}">${n}</div>
+            `).join('');
+        }
 
-function renderWaiting() {
-    const pendingOrders = [...orders.values()].filter(o => o.status === 'pending');
-    const list = document.getElementById('waiting-list');
-    document.getElementById('waiting-count').textContent = pendingOrders.length + '건';
-
-    if (pendingOrders.length === 0) {
-        list.innerHTML = `<div style="color:var(--dim); font-size:0.85rem; text-align:center; margin-top:20px;">없음</div>`;
-        return;
-    }
-
-    list.innerHTML = pendingOrders.map(o => {
-        const summary = o.items ? o.items.slice(0, 2).map(i => i.name).join(', ') + (o.items.length > 2 ? '...' : '') : '';
-        return `
-        <div class="waiting-row">
-            <div class="w-no">#${o.order_no}</div>
-            <div class="w-table">${o.table_id}번</div>
-            <div class="w-items">${summary}</div>
-        </div>`;
-    }).join('');
-}
-
-function playChime() {
-    document.getElementById('chime').play().catch(() => {});
-}
-</script>
+        // 30초마다 강제 갱신
+        setInterval(refresh, 30000);
+    </script>
 </body>
 </html>

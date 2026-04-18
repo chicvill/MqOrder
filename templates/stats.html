@@ -2,261 +2,254 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ store.name }} | 통계</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>통계 - {{ store.name }}</title>
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-        :root {
-            --primary: #3b82f6; --accent: #10b981; --warning: #f59e0b; --danger: #ef4444;
-            --bg: #0b1121; --card: #161c2d; --border: rgba(255,255,255,0.12); --text: #f8fafc;
+        .stats-header { padding: 1.2rem 1.2rem 0.5rem; }
+        .stats-header h1 { font-size: 1.5rem; font-weight: 800; }
+
+        .s-period-selector {
+            display: flex;
+            padding: 0.5rem 1.2rem;
+            gap: 0.5rem;
+            overflow-x: auto;
+            scrollbar-width: none;
         }
-        body { background: var(--bg); color: var(--text); font-family: 'Pretendard', sans-serif; margin: 0; min-height: 100vh; -webkit-font-smoothing: antialiased; }
-        .stats-container { max-width: 1100px; margin: 0 auto; padding: 25px; }
-        
-        .nav-header { 
-            display: flex; justify-content: space-between; align-items: center; 
-            margin-bottom: 30px; padding: 20px 30px; 
-            background: rgba(255, 255, 255, 0.04); border-radius: 24px; border: 1px solid var(--border);
+        .s-period-selector::-webkit-scrollbar { display: none; }
+        .s-period-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 0.5rem 1.1rem;
+            border-radius: 100px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .s-period-btn.active {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
         }
 
-        .period-tabs {
-            display: flex; gap: 10px; margin-bottom: 30px; 
-            background: rgba(0,0,0,0.3); padding: 8px; border-radius: 18px;
-        }
-        .tab-btn {
-            flex: 1; padding: 14px; background: none; border: none;
-            color: #94a3b8; border-radius: 12px; cursor: pointer;
-            font-size: 1rem; font-weight: 800; transition: 0.2s;
-        }
-        .tab-btn.active { background: var(--primary); color: #fff; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+        .s-content { padding: 1.2rem; }
 
-        .stat-card {
-            background: var(--card); border: 1px solid var(--border); border-radius: 28px; padding: 35px;
-            margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        .s-rev-card {
+            background: var(--accent);
+            border-radius: var(--radius-lg);
+            padding: 1.6rem 1.4rem;
+            color: #fff;
+            margin-bottom: 1.2rem;
+            position: relative;
+            overflow: hidden;
         }
-        .sales-value { font-size: 3.5rem; font-weight: 1000; color: #fff; margin: 15px 0; letter-spacing: -1px; }
-        .label-text { font-size: 1rem; color: #94a3b8; text-transform: uppercase; font-weight: 800; letter-spacing: 1.5px; }
-
-        .item-row { 
-            display: flex; justify-content: space-between; align-items: center; 
-            padding: 18px 0; border-bottom: 1px solid var(--border);
+        .s-rev-card::after {
+            content: '\f201';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            right: -10px;
+            bottom: -10px;
+            font-size: 8rem;
+            opacity: 0.1;
         }
-        .item-row:last-child { border: none; }
+        .s-rev-label { font-size: 0.85rem; font-weight: 600; opacity: 0.9; margin-bottom: 4px; }
+        .s-rev-amount { font-size: 2.2rem; font-weight: 800; letter-spacing: -1px; }
+        .s-rev-sub { font-size: 0.75rem; opacity: 0.8; margin-top: 8px; }
 
-        .table-box { border-radius: 20px; overflow: hidden; border: 1px solid var(--border); margin-top: 10px; }
-        table { width: 100%; border-collapse: collapse; font-size: 1.05rem; }
-        th { background: rgba(255,255,255,0.05); padding: 20px; text-align: left; color: #94a3b8; font-weight: 800; font-size: 0.9rem; text-transform: uppercase; }
-        td { padding: 20px; border-top: 1px solid var(--border); color: #e2e8f0; }
-
-        .btn-action {
-            background: rgba(255,255,255,0.08); border: 1px solid var(--border);
-            color: #fff; padding: 10px 20px; border-radius: 12px; cursor: pointer;
-            text-decoration: none; font-size: 1rem; font-weight: 800; display: inline-flex; align-items: center; gap: 8px;
+        .s-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-bottom: 1.2rem; }
+        .s-mini-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 1rem;
         }
-        .btn-action:hover { background: var(--primary); border-color: var(--primary); transform: translateY(-2px); transition: 0.2s; }
+        .sm-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; }
+        .sm-value { font-size: 1.2rem; font-weight: 800; color: #fff; }
 
-        /* 인쇄 전용 스타일 */
-        @media print {
-            body { background: #fff !important; color: #000 !important; }
-            .nav-header, .period-tabs, .btn-action, .no-print { display: none !important; }
-            .stats-container { max-width: 100%; padding: 0; width: 100%; }
-            .stat-card { 
-                box-shadow: none !important; 
-                border: 1px solid #ddd !important; 
-                background: #fff !important;
-                margin-bottom: 20px !important;
-                break-inside: avoid;
-            }
-            .sales-value, .label-text, td, th { color: #000 !important; }
-            .item-row { border-bottom: 1px solid #eee !important; }
-            table { border: 1px solid #eee !important; }
-            canvas { max-width: 100% !important; height: auto !important; }
-            
-            /* 인쇄물 상단 제목 추가용 */
-            .print-only-header { display: block !important; margin-bottom: 30px; text-align: center; }
-            .print-only-header h1 { font-size: 24pt; margin-bottom: 5px; }
-            .print-only-header p { font-size: 12pt; color: #666; }
+        .chart-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1.2rem;
+            margin-bottom: 1.2rem;
         }
-        .print-only-header { display: none; }
+        .best-list {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+        .best-row {
+            padding: 1rem 1.2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .best-row:last-child { border-bottom: none; }
+        .br-idx { width: 20px; font-size: 0.8rem; font-weight: 700; color: var(--accent); }
+        .br-name { flex: 1; font-size: 0.9rem; font-weight: 700; margin-left: 8px; }
+        .br-val { font-size: 0.9rem; font-weight: 800; color: var(--text-dim); }
     </style>
 </head>
-<body>
-    <div class="stats-container">
-        <div class="print-only-header">
-            <h1>{{ store.name }} 매출 분석 리포트</h1>
-            <p id="print-date">조회 기준: 오늘</p>
+<body class="nav-body">
+{% from 'macros/bottom_nav.html' import bottom_nav %}
+
+<div class="app-shell">
+    <div class="stats-header">
+        <h1>통계 분석</h1>
+    </div>
+
+    <!-- 기간 선택 -->
+    <div class="s-period-selector">
+        <div class="s-period-btn active" onclick="changePeriod('today', this)">오늘</div>
+        <div class="s-period-btn" onclick="changePeriod('week', this)">주간</div>
+        <div class="s-period-btn" onclick="changePeriod('month', this)">월간</div>
+        <div class="s-period-btn" onclick="changePeriod('year', this)">연간</div>
+    </div>
+
+    <div class="s-content">
+        <!-- 메인 매출 카드 -->
+        <div class="s-rev-card">
+            <div class="s-rev-label" id="rev-label">오늘 총 매출</div>
+            <div class="s-rev-amount" id="rev-total">0원</div>
+            <div class="s-rev-sub" id="rev-date">조회 기준: 오늘</div>
         </div>
 
-        <div class="nav-header">
-            <h1 style="font-size: 1.2rem; font-weight: 900; margin: 0; color: var(--primary);">{{ store.name }}</h1>
-            <div style="display: flex; gap: 10px;">
-                <button onclick="window.print()" class="btn-action" style="background:var(--accent); border-color:var(--accent);"><i data-lucide="printer" size="14"></i> 결과 인쇄</button>
-                <button onclick="resetStats()" class="btn-action" style="color: var(--danger);"><i data-lucide="rotate-ccw" size="14"></i> 초기화</button>
-                <a href="/{{ store.id }}/counter" class="btn-action">카운터</a>
+        <div class="s-grid">
+            <div class="s-mini-card">
+                <div class="sm-label">주문 건수</div>
+                <div class="sm-value" id="ord-count">0건</div>
             </div>
-        </div>
-
-        <div class="period-tabs">
-            <button class="tab-btn active" onclick="changePeriod('today', this)">오늘</button>
-            <button class="tab-btn" onclick="changePeriod('week', this)">주간</button>
-            <button class="tab-btn" onclick="changePeriod('month', this)">월간</button>
-            <button class="tab-btn" onclick="changePeriod('year', this)">연간</button>
-        </div>
-
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-            <div class="stat-card">
-                <span class="label-text" id="period-label">오늘의 매출</span>
-                <div class="sales-value" id="sales-total">0원</div>
-                <span style="font-size: 0.7rem; color: #475569;" id="period-sub">기준: -</span>
-            </div>
-
-            <div class="stat-card">
-                <span class="label-text">인기 메뉴 TOP 5</span>
-                <div id="best-menu-list" style="margin-top: 15px;">
-                    <!-- JS population -->
-                </div>
+            <div class="s-mini-card">
+                <div class="sm-label">신규 회원</div>
+                <div class="sm-value" id="new-cust">0명</div>
             </div>
         </div>
 
-        <div class="stat-card" style="margin-top: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <span class="label-text">우수 고객 현황</span>
-                <span id="cust-count" style="font-size: 0.75rem; color: #4b5563;">0명</span>
-            </div>
-            <div class="table-box">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>번호</th>
-                            <th style="text-align: center;">방문</th>
-                            <th style="text-align: right;">지출</th>
-                        </tr>
-                    </thead>
-                    <tbody id="customer-list">
-                        <!-- JS population -->
-                    </tbody>
-                </table>
-            </div>
+        <div class="section-header">
+            <span class="section-title">판매량 추이</span>
+        </div>
+        <div class="chart-box">
+            <canvas id="salesChart" style="max-height: 220px;"></canvas>
         </div>
 
-        <div class="stat-card" style="margin-top: 20px;">
-            <span class="label-text">판매 수량 추이</span>
-            <div style="margin-top: 20px;">
-                <canvas id="menuChart" style="max-height: 300px;"></canvas>
-            </div>
+        <div class="section-header">
+            <span class="section-title">인기 메뉴 TOP 5</span>
+        </div>
+        <div class="best-list" id="best-list">
+            <!-- JS -->
+        </div>
+
+        <div style="margin-top: 2rem; display: flex; gap: 0.6rem;">
+            <button class="btn btn-secondary btn-sm" onclick="window.print()" style="flex:1;">
+                <i class="fa-solid fa-file-pdf"></i> 리포트 저장
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="resetStats()" style="flex:1; border-color: rgba(239,68,68,0.3); color: var(--danger);">
+                <i class="fa-solid fa-trash"></i> 통계 초기화
+            </button>
         </div>
     </div>
 
-    <script>
-        let chart = null;
-        let currentPeriod = 'today';
+    <footer style="padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.72rem;">
+        고급 분석 기능을 위해 MQnet Pro 구독을 고려해보세요.
+    </footer>
+</div>
 
-        async function changePeriod(period, btn) {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            const labels = {'today': '오늘의 매출', 'week': '주간 매출 합계', 'month': '월간 매출 합계', 'year': '연간 매출 합계'};
-            document.getElementById('period-label').innerText = labels[period];
-            currentPeriod = period;
-            document.getElementById('print-date').innerText = `조회 기준: ${labels[period]} (생성일: ${new Date().toLocaleDateString()})`;
-            loadStats();
-        }
+{{ bottom_nav(active='stats', store_id=store.id) }}
 
-        async function resetStats() {
-            if (!confirm('초기화?')) return;
-            const res = await fetch('/api/{{ store.id }}/stats/reset', { method: 'POST' });
-            if ((await res.json()).status === 'success') loadStats();
-        }
+<script>
+    const STORE_ID = "{{ store.id }}";
+    let currentPeriod = 'today';
+    let chart = null;
 
-        async function loadStats() {
-            try {
-                const res = await fetch(`/api/{{ store.id }}/stats?period=${currentPeriod}`);
-                const data = await res.json();
-                
-                document.getElementById('sales-total').innerText = (data.sales || 0).toLocaleString() + '원';
-                document.getElementById('period-sub').innerText = `시작일: ${data.start_date || '-'}`;
-                
-                const list = document.getElementById('best-menu-list');
-                list.innerHTML = '';
-                if (data.best_menu && data.best_menu.length > 0) {
-                    data.best_menu.forEach((item, index) => {
-                        const div = document.createElement('div');
-                        div.className = 'item-row';
-                        div.innerHTML = `
-                            <span style="font-size: 1.1rem;">${index + 1}. <span style="font-weight:800; color:#fff;">${item.name}</span></span>
-                            <span style="font-weight: 950; color: var(--primary); font-size: 1.2rem;">${item.count}</span>
-                        `;
-                        list.appendChild(div);
-                    });
-                } else {
-                    list.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:30px; font-size:1.1rem;">데이터 없음</div>';
-                }
+    async function changePeriod(p, btn) {
+        currentPeriod = p;
+        document.querySelectorAll('.s-period-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        const labels = {'today': '오늘 총 매출', 'week': '주간 매출 합계', 'month': '월간 매출 합계', 'year': '연간 매출 합계'};
+        document.getElementById('rev-label').textContent = labels[p];
+        document.getElementById('rev-date').textContent = `조회 기준: ${labels[p].split(' ')[0]}`;
+        
+        loadStats();
+    }
 
-                const custRes = await fetch(`/api/{{ store.id }}/customers`);
-                const customers = await custRes.json();
-                const clist = document.getElementById('customer-list');
-                document.getElementById('cust-count').innerText = `전체 ${customers.length}명`;
-                clist.innerHTML = '';
-                customers.slice(0, 5).forEach(c => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td style="color: #fff; font-weight:800; font-size:1.1rem;">${c.phone}</td>
-                        <td style="text-align: center; font-weight:800;">${c.visit_count}</td>
-                        <td style="text-align: right; font-weight: 950; color: var(--accent); font-size:1.1rem;">${(c.total_spent || 0).toLocaleString()}</td>
+    async function loadStats() {
+        try {
+            const res = await fetch(`/api/${STORE_ID}/stats?period=${currentPeriod}`);
+            const data = await res.json();
+
+            document.getElementById('rev-total').textContent = (data.sales || 0).toLocaleString() + '원';
+            
+            const bestList = document.getElementById('best-list');
+            bestList.innerHTML = '';
+            const menus = data.best_menu || [];
+            if (menus.length === 0) {
+                bestList.innerHTML = '<div style="padding:2rem; text-align:center; color:var(--text-muted); font-size:0.85rem;">데이터 없음</div>';
+            } else {
+                menus.forEach((m, i) => {
+                    const row = document.createElement('div');
+                    row.className = 'best-row';
+                    row.innerHTML = `
+                        <div class="br-idx">${i+1}</div>
+                        <div class="br-name">${m.name}</div>
+                        <div class="br-val">${m.count}개</div>
                     `;
-                    clist.appendChild(tr);
+                    bestList.appendChild(row);
                 });
+            }
 
-                updateChart(data.best_menu || []);
-                lucide.createIcons();
-            } catch (e) { console.error(e); }
-        }
+            // 추가 정보 (주문건수 등 - stats api 수정 필요 시 대비)
+            // 현재 api/stats 에 건수가 없으면 store.py 보강 필요.
+            // 여기서는 임시로 chip 데이터 등 활용 가능.
 
-        function updateChart(bestMenu) {
-            const ctx = document.getElementById('menuChart').getContext('2d');
-            if (chart) chart.destroy();
-            chart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: bestMenu.map(m => m.name),
-                    datasets: [{
-                        label: '판매량',
-                        data: bestMenu.map(m => m.count),
-                        backgroundColor: '#3b82f6',
-                        borderRadius: 8,
-                        barThickness: 25
-                    }]
+            updateChart(menus);
+        } catch(e) {}
+    }
+
+    function updateChart(menus) {
+        const ctx = document.getElementById('salesChart').getContext('2d');
+        if (chart) chart.destroy();
+
+        chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: menus.map(m => m.name),
+                datasets: [{
+                    label: '판매량',
+                    data: menus.map(m => m.count),
+                    backgroundColor: '#f97316',
+                    borderRadius: 6,
+                    barThickness: 20
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#a1a1aa' } },
+                    x: { grid: { display: false }, ticks: { color: '#a1a1aa' } }
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { 
-                            beginAtZero: true, 
-                            grid: { color: 'rgba(255,255,255,0.08)' }, 
-                            ticks: { color: '#94a3b8', font: { size: 12, weight: 'bold' } } 
-                        },
-                        x: { 
-                            grid: { display: false }, 
-                            ticks: { color: '#94a3b8', font: { size: 13, weight: 'bold' } } 
-                        }
-                    },
-                    plugins: { 
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#1e293b',
-                            titleFont: { size: 14, weight: 'bold' },
-                            bodyFont: { size: 13 },
-                            padding: 12,
-                            cornerRadius: 10
-                        }
-                    }
-                }
-            });
-        }
-        window.onload = loadStats;
-    </script>
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    async function resetStats() {
+        if (!confirm('정말 통계 데이터를 초기화하시겠습니까? (결제 내역은 유지됩니다)')) return;
+        try {
+            await fetch(`/api/${STORE_ID}/stats/reset`, { method: 'POST' });
+            loadStats();
+        } catch(e) {}
+    }
+
+    window.onload = loadStats;
+</script>
 </body>
 </html>
